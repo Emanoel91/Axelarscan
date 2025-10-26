@@ -113,7 +113,7 @@ try:
     inflation = data.get("inflation", 0)
 
     # --- KPI Display Section -----------------------------------------------------------------------------------
-    st.markdown("### 💎 Key Performance Indicators (KPI)")
+    st.markdown("### 💎 AXL Key Performance Indicators")
 
     st.markdown(
         """
