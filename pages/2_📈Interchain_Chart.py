@@ -4,7 +4,6 @@ import requests
 import plotly.graph_objects as go
 import plotly.express as px
 from datetime import datetime, time as dtime
-import time
 
 # -------------------------------- Page config --------------------------------
 st.set_page_config(page_title="Axelarscan", page_icon="https://axelarscan.io/logos/logo.png", layout="wide")
@@ -44,7 +43,7 @@ with filter_col:
     with c5:
         timeframe = st.selectbox("Time Frame", ["day", "week", "month"], index=2)  # default = month
 
-# Footer (kept as in your original)
+# Footer
 st.markdown(
     """
     <style>
@@ -71,7 +70,7 @@ def safe_parse_timestamp_series(series):
     تابع تشخیص می‌دهد و pd.to_datetime با unit مناسب فراخوانی می‌شود.
     در صورت خطا، مقادیر نامعتبر به NaT تبدیل می‌شوند.
     """
-    # اگر قبلاً سری از نوع datetime باشد، برگردان
+    # اگر قبلاً series از نوع datetime باشد، برگردان
     if pd.api.types.is_datetime64_any_dtype(series):
         return pd.to_datetime(series)
 
@@ -80,28 +79,18 @@ def safe_parse_timestamp_series(series):
     if nums.notna().any():
         maxv = nums.max()
         # تشخیص میلی‌ثانیه یا ثانیه براساس بزرگی عدد
-        # مقادیر تا حدود 1e10 مربوط به ثانیه‌های معقول (تا سال ~2286)
-        # اگر بزرگ‌تر از 1e11 احتمالا میلی‌ثانیه
         if maxv > 1e11:
             unit = "ms"
         else:
             unit = "s"
-        # تبدیل با محافظت از overflow: errors='coerce'
         dt = pd.to_datetime(nums, unit=unit, errors="coerce")
-        # اگر تقریباً همه NaT شد، احتمالاً این‌ها رشته ISO هستند — تلاش دوباره
+        # اگر تقریباً همه NaT شد، احتمالاً رشته ISO هستند — تلاش دوباره
         if dt.notna().sum() == 0:
-            try:
-                return pd.to_datetime(series, errors="coerce")
-            except Exception:
-                return dt
+            return pd.to_datetime(series, errors="coerce")
         return dt
 
     # اگر به صورت رشته ISO باشد
-    try:
-        return pd.to_datetime(series, errors="coerce")
-    except Exception:
-        # fallback: تبدیل عددی دوباره با errors='coerce'
-        return pd.to_datetime(series, errors="coerce")
+    return pd.to_datetime(series, errors="coerce")
 
 # ------------------------------- Build API params ----------------------------
 base_url = "https://api.axelarscan.io/api/interchainChart"
@@ -112,7 +101,6 @@ if destination_chain:
     params["destinationChain"] = destination_chain
 
 # convert from_date/to_date to unix (seconds)
-# Make sure to include full day: from at 00:00:00, to at 23:59:59
 if from_date:
     dt_from = datetime.combine(from_date, dtime.min)
     params["fromTime"] = int(dt_from.timestamp())
@@ -134,37 +122,38 @@ with st.spinner("Fetching data from Axelar API..."):
 # ------------------------------- DataFrame ---------------------------------
 df = pd.DataFrame(data)
 
+# If empty, create placeholder columns to avoid later crashes
 if df.empty:
     st.warning("No data returned from API for the selected filters/range.")
-    # create empty placeholders to avoid later crashes
     df = pd.DataFrame(columns=["timestamp","num_txs","volume","gmp_num_txs","gmp_volume","transfers_num_txs","transfers_volume"])
 
-# parse/normalize timestamp safely
-df["timestamp_parsed"] = safe_parse_timestamp_series(df.get("timestamp", pd.Series([])))
+# --- IMPORTANT FIX:
+# Overwrite (or create) single 'timestamp' column with parsed datetimes
+# (this avoids creating duplicate column labels)
+df["timestamp"] = safe_parse_timestamp_series(df.get("timestamp", pd.Series(dtype="object")))
+
 # drop rows with invalid timestamp
-df = df[~df["timestamp_parsed"].isna()].copy()
+df = df[~df["timestamp"].isna()].copy()
+
 # ensure numeric columns exist (if missing from API, fill with zeros)
 for col in ["num_txs","volume","gmp_num_txs","gmp_volume","transfers_num_txs","transfers_volume"]:
     if col not in df.columns:
         df[col] = 0
+
 # Convert numeric columns properly
 num_cols = ["num_txs","volume","gmp_num_txs","gmp_volume","transfers_num_txs","transfers_volume"]
 df[num_cols] = df[num_cols].apply(pd.to_numeric, errors="coerce").fillna(0)
 
-# Use parsed timestamp as the canonical column
-df = df.rename(columns={"timestamp_parsed": "timestamp"})
+# Sort by timestamp and reset index
 df = df.sort_values("timestamp").reset_index(drop=True)
 
 # ------------------------------- Aggregation by timeframe -------------------
 if timeframe == "day":
-    # keep daily granularity — ensure grouped by date
     df_agg = df.copy()
-    # keep timestamp as date (start of day)
     df_agg["timestamp"] = pd.to_datetime(df_agg["timestamp"].dt.floor("D"))
     df_agg = df_agg.groupby("timestamp", as_index=False)[num_cols].sum()
 elif timeframe == "week":
     df_agg = df.copy()
-    # resample by week (ending Sunday). you can change 'W' to 'W-MON' if want week ending Monday
     df_agg = df_agg.set_index("timestamp").resample("W").sum(numeric_only=True).reset_index()
 elif timeframe == "month":
     df_agg = df.copy()
@@ -172,9 +161,21 @@ elif timeframe == "month":
 else:
     df_agg = df.copy()
 
+# If aggregation produced empty df (e.g. after filtering), create zeros to avoid plotting errors
+if df_agg.empty:
+    df_agg = pd.DataFrame({
+        "timestamp": pd.to_datetime([]),
+        "num_txs": pd.Series(dtype="int"),
+        "volume": pd.Series(dtype="float"),
+        "gmp_num_txs": pd.Series(dtype="int"),
+        "gmp_volume": pd.Series(dtype="float"),
+        "transfers_num_txs": pd.Series(dtype="int"),
+        "transfers_volume": pd.Series(dtype="float"),
+    })
+
 # ------------------------------- KPIs --------------------------------------
-total_txs = int(df_agg["num_txs"].sum())
-total_volume = float(df_agg["volume"].sum())
+total_txs = int(df_agg["num_txs"].sum()) if not df_agg.empty else 0
+total_volume = float(df_agg["volume"].sum()) if not df_agg.empty else 0.0
 
 k1, k2 = st.columns([1,1])
 k1.metric("Total Number of Transfers", f"{total_txs:,}")
