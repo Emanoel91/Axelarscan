@@ -2,8 +2,8 @@ import streamlit as st
 
 # --- Page Config: Tab Title & Icon ---
 st.set_page_config(
-    page_title="Staking on the Axelar Network",
-    page_icon="https://pbs.twimg.com/profile_images/1877235283755778048/4nlylmxm_400x400.jpg",
+    page_title="Axelarscan",
+    page_icon="https://axelarscan.io/logos/logo.png",
     layout="wide"
 )
 
@@ -11,8 +11,8 @@ st.set_page_config(
 st.markdown(
     """
     <div style="display: flex; align-items: center; gap: 15px;">
-        <img src="https://pbs.twimg.com/profile_images/1877235283755778048/4nlylmxm_400x400.jpg" alt="axelar" style="width:60px; height:60px;">
-        <h1 style="margin: 0;">Staking on the Axelar Network</h1>
+        <img src="https://axelarscan.io/logos/logo.png" alt="axelar" style="width:60px; height:60px;">
+        <h1 style="margin: 0;">Axelarscan</h1>
     </div>
     """,
     unsafe_allow_html=True
@@ -28,21 +28,6 @@ st.markdown(
             <span>Built by: <a href="https://x.com/0xeman_raz" target="_blank">Eman Raz</a></span>
         </div>
     </div>
-    """,
-    unsafe_allow_html=True
-)
-
-# --- Info Box ---
-st.markdown(
-    """
-    <div style="background-color: #fec7a2; padding: 15px; border-radius: 10px; border: 1px solid #fec7a2;">
-        Axelar's staking mechanism is an important component of its blockchain network. The staking process involves AXL token holders participating in the 
-        network's Proof-of-Stake (PoS) consensus protocol. Validators stake their AXL tokens to verify cross-chain transactions and maintain the security and 
-        integrity of the network. To stake AXL tokens, users need to ensure they have native AXL tokens held in a Cosmos-compatible wallet that supports staking, 
-        such as Ledger, Keplr, or Cosmostation. If the AXL tokens are held in an EVM wallet like MetaMask, they need to be converted to native AXL.
-        Once users have native AXL tokens, they can choose a validator to stake their tokens with on the Axelar network. This can be done through a compatible 
-        wallet's staking dashboard. Users select the Axelar network, choose a validator, enter the amount of AXL tokens they wish to stake, and approve the transaction. By staking AXL tokens, users contribute to the security and operation of the Axelar network while earning rewards for their participation.
-</div>
     """,
     unsafe_allow_html=True
 )
