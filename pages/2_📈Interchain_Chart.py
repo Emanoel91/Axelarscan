@@ -233,10 +233,10 @@ st.plotly_chart(fig3, use_container_width=True)
 col_a, col_b = st.columns(2)
 with col_a:
     vals_num = [df_agg["gmp_num_txs"].sum(), df_agg["transfers_num_txs"].sum()]
-    fig4 = px.pie(names=["GMP Transfers", "Token Transfers"], values=vals_num, hole=0.55, title="Total Number of Transfers by Service")
+    fig4 = px.pie(names=["GMP", "Token Transfers"], values=vals_num, hole=0.55, title="Total Number of Transfers by Service")
     st.plotly_chart(fig4, use_container_width=True)
 
 with col_b:
     vals_vol = [df_agg["gmp_volume"].sum(), df_agg["transfers_volume"].sum()]
-    fig5 = px.pie(names=["GMP Volume", "Token Transfer Volume"], values=vals_vol, hole=0.55, title="Total Volume of Transfers by Service")
+    fig5 = px.pie(names=["GMP", "Token Transfer Volume"], values=vals_vol, hole=0.55, title="Total Volume of Transfers by Service")
     st.plotly_chart(fig5, use_container_width=True)
