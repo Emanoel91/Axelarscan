@@ -231,12 +231,14 @@ st.plotly_chart(fig3, use_container_width=True)
 
 # ------------------------------- Donut charts --------------------------------
 col_a, col_b = st.columns(2)
+
 with col_a:
     vals_num = [df_agg["gmp_num_txs"].sum(), df_agg["transfers_num_txs"].sum()]
-    fig4 = px.pie(names=["GMP", "Token Transfers"], values=vals_num, hole=0.55, title="Total Number of Transfers by Service")
+    fig4 = px.pie(names=["GMP", "Token Transfers"], values=vals_num, hole=0.55, title="Total Number of Transfers by Service", color_discrete_sequence=["#FFA500", "#ADD8E6"])
     st.plotly_chart(fig4, use_container_width=True)
 
 with col_b:
     vals_vol = [df_agg["gmp_volume"].sum(), df_agg["transfers_volume"].sum()]
-    fig5 = px.pie(names=["GMP", "Token Transfer"], values=vals_vol, hole=0.55, title="Total Volume of Transfers by Service ($USD)")
+    fig5 = px.pie(names=["GMP", "Token Transfer"], values=vals_vol, hole=0.55, title="Total Volume of Transfers by Service ($USD)", color_discrete_sequence=["#FFA500", "#ADD8E6"])
     st.plotly_chart(fig5, use_container_width=True)
+
