@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import requests
 import snowflake.connector
 import plotly.express as px
 import plotly.graph_objects as go
@@ -15,12 +16,12 @@ st.set_page_config(
 )
 
 # --- Title -----------------------------------------------------------------------------------------------------
-st.title("📊AXL Token Info")
+st.title("📊 AXL Token Info")
 
 st.info("📊Charts initially display data for a default time range. Select a custom range to view results for your desired period.")
 st.info("⏳On-chain data retrieval may take a few moments. Please wait while the results load.")
 
-# --- Sidebar Footer Slightly Left-Aligned ---
+# --- Sidebar Footer Slightly Left-Aligned ---------------------------------------------------------------------
 st.sidebar.markdown(
     """
     <style>
@@ -30,7 +31,7 @@ st.sidebar.markdown(
         width: 250px;
         font-size: 13px;
         color: gray;
-        margin-left: 5px; # -- MOVE LEFT
+        margin-left: 5px; 
         text-align: left;  
     }
     .sidebar-footer img {
@@ -93,3 +94,64 @@ conn = snowflake.connector.connect(
     database=database,
     schema=schema
 )
+
+# --- Fetch Token Info from API ----------------------------------------------------------------------------------
+@st.cache_data(ttl=300)
+def get_token_info():
+    url = "https://api.axelarscan.io/api/getTokenInfo"
+    response = requests.get(url)
+    response.raise_for_status()
+    return response.json()
+
+try:
+    data = get_token_info()
+    price = data.get("price", 0)
+    market_cap = data.get("marketCap", 0)
+    circulating_supply = data.get("circulatingSupply", 0)
+    max_supply = data.get("maxSupply", 0)
+    total_burned = data.get("totalBurned", 0)
+    inflation = data.get("inflation", 0)
+
+    # --- KPI Display Section -----------------------------------------------------------------------------------
+    st.markdown("### 💎 Key Performance Indicators (KPI)")
+
+    st.markdown(
+        """
+        <style>
+        div[data-testid="stMetricValue"] {
+            font-size: 28px;
+            font-weight: 700;
+            color: #00B8F4;
+        }
+        div[data-testid="stMetricLabel"] {
+            font-size: 15px;
+            color: #888;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
+
+    # --- Row 1 ---
+    col1, col2 = st.columns(2)
+    with col1:
+        st.metric("💰 Current Price (USD)", f"${price:,.3f}")
+    with col2:
+        st.metric("🏦 Market Cap (USD)", f"${market_cap:,.0f}")
+
+    # --- Row 2 ---
+    col3, col4 = st.columns(2)
+    with col3:
+        st.metric("🔄 Circulating Supply", f"{circulating_supply:,.0f} AXL")
+    with col4:
+        st.metric("📈 Max Supply", f"{max_supply:,.0f} AXL")
+
+    # --- Row 3 ---
+    col5, col6 = st.columns(2)
+    with col5:
+        st.metric("🔥 Total Burned", f"{total_burned:,.0f} AXL")
+    with col6:
+        st.metric("📊 Inflation", f"{inflation * 100:.2f}%")
+
+except Exception as e:
+    st.error(f"❌ Error fetching token data: {e}")
