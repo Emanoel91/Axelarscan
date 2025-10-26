@@ -238,5 +238,5 @@ with col_a:
 
 with col_b:
     vals_vol = [df_agg["gmp_volume"].sum(), df_agg["transfers_volume"].sum()]
-    fig5 = px.pie(names=["GMP", "Token Transfer Volume"], values=vals_vol, hole=0.55, title="Total Volume of Transfers by Service")
+    fig5 = px.pie(names=["GMP", "Token Transfer"], values=vals_vol, hole=0.55, title="Total Volume of Transfers by Service ($USD)")
     st.plotly_chart(fig5, use_container_width=True)
