@@ -1,12 +1,10 @@
 import streamlit as st
 import pandas as pd
 import requests
-import snowflake.connector
-import plotly.express as px
 import plotly.graph_objects as go
-from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.backends import default_backend
-import networkx as nx
+import plotly.express as px
+from datetime import datetime
+import time
 
 # --- Page Config ------------------------------------------------------------------------------------------------------
 st.set_page_config(
@@ -15,13 +13,38 @@ st.set_page_config(
     layout="wide"
 )
 
-# --- Title -----------------------------------------------------------------------------------------------------
+# --- Title ------------------------------------------------------------------------------------------------------------
 st.title("📈 Interchain Chart")
 
 st.info("📊Charts initially display data for a default time range. Select a custom range to view results for your desired period.")
 st.info("⏳On-chain data retrieval may take a few moments. Please wait while the results load.")
 
-# --- Sidebar Footer Slightly Left-Aligned ---------------------------------------------------------------------
+# --- Sidebar Filters --------------------------------------------------------------------------------------------------
+st.sidebar.header("🔍 Filters")
+
+chains = [
+    "Avalanche", "Axelarnet", "Ethereum", "Fantom", "Moonbeam", "Polygon", "acre", "agoric",
+    "allora", "arbitrum", "archway", "assetmantle", "aura", "babylon", "base", "berachain",
+    "binance", "bitsong", "blast", "c4e", "carbon", "celestia", "celo", "centrifuge", "chihuahua",
+    "comdex", "cosmoshub", "crescent", "dymension", "e-money", "elys", "evmos", "fetch", "filecoin",
+    "flow", "fraxtal", "fxcore", "haqq", "hedera", "hyperliquid", "immutable", "injective", "ixo",
+    "jackal", "juno", "kava", "ki", "kujira", "lava", "linea", "mantle", "mantra", "migaloo",
+    "neutron", "nolus", "ojo", "optimism", "osmosis", "persistence", "plume", "provenance", "rebus",
+    "regen", "saga", "scroll", "secret", "secret-snip", "sei", "sommelier", "stargaze", "stellar",
+    "stride", "sui", "teritori", "terra", "terra-2", "umee", "xion", "xpla", "xrpl", "xrpl-evm",
+    "zigchain"
+]
+
+source_chain = st.sidebar.selectbox("Source Chain", [""] + chains)
+destination_chain = st.sidebar.selectbox("Destination Chain", [""] + chains)
+
+col1, col2 = st.sidebar.columns(2)
+from_date = col1.date_input("Start Date")
+to_date = col2.date_input("End Date")
+
+timeframe = st.sidebar.selectbox("Time Frame", ["day", "week", "month"], index=2)
+
+# --- Sidebar Footer ---------------------------------------------------------------------------------------------------
 st.sidebar.markdown(
     """
     <style>
@@ -65,33 +88,105 @@ st.sidebar.markdown(
     unsafe_allow_html=True
 )
 
-# --- Snowflake Connection ----------------------------------------------------------------------------------------
-snowflake_secrets = st.secrets["snowflake"]
-user = snowflake_secrets["user"]
-account = snowflake_secrets["account"]
-private_key_str = snowflake_secrets["private_key"]
-warehouse = snowflake_secrets.get("warehouse", "")
-database = snowflake_secrets.get("database", "")
-schema = snowflake_secrets.get("schema", "")
+# --- API Request ------------------------------------------------------------------------------------------------------
 
-private_key_pem = f"-----BEGIN PRIVATE KEY-----\n{private_key_str}\n-----END PRIVATE KEY-----".encode("utf-8")
-private_key = serialization.load_pem_private_key(
-    private_key_pem,
-    password=None,
-    backend=default_backend()
-)
-private_key_bytes = private_key.private_bytes(
-    encoding=serialization.Encoding.DER,
-    format=serialization.PrivateFormat.PKCS8,
-    encryption_algorithm=serialization.NoEncryption()
+base_url = "https://api.axelarscan.io/api/interchainChart"
+params = {}
+
+if source_chain:
+    params["sourceChain"] = source_chain
+if destination_chain:
+    params["destinationChain"] = destination_chain
+if from_date:
+    params["fromTime"] = int(time.mktime(datetime.combine(from_date, datetime.min.time()).timetuple()))
+if to_date:
+    params["toTime"] = int(time.mktime(datetime.combine(to_date, datetime.max.time()).timetuple()))
+
+with st.spinner("Fetching data from Axelar API..."):
+    response = requests.get(base_url, params=params)
+    data = response.json()["data"]
+
+df = pd.DataFrame(data)
+df["timestamp"] = pd.to_datetime(df["timestamp"], unit="s")
+
+# --- Time Frame Aggregation --------------------------------------------------------------------------------------------
+
+if timeframe == "week":
+    df = df.resample("W", on="timestamp").sum(numeric_only=True)
+    df = df.reset_index()
+elif timeframe == "month":
+    df = df.resample("M", on="timestamp").sum(numeric_only=True)
+    df = df.reset_index()
+# day = default granularity, no need to resample
+
+# --- KPIs --------------------------------------------------------------------------------------------------------------
+total_txs = df["num_txs"].sum()
+total_volume = df["volume"].sum()
+
+kpi1, kpi2 = st.columns(2)
+kpi1.metric("Total Number of Transfers", f"{total_txs:,.0f}")
+kpi2.metric("Total Volume of Transfers", f"{total_volume:,.2f}")
+
+# --- Chart 1: Volume & Number of Transfers Over Time -------------------------------------------------------------------
+fig1 = go.Figure()
+
+fig1.add_bar(
+    x=df["timestamp"], y=df["num_txs"], name="Number of Transfers", yaxis="y1", opacity=0.6
 )
 
-conn = snowflake.connector.connect(
-    user=user,
-    account=account,
-    private_key=private_key_bytes,
-    warehouse=warehouse,
-    database=database,
-    schema=schema
+fig1.add_trace(
+    go.Scatter(
+        x=df["timestamp"], y=df["volume"], name="Volume of Transfers", yaxis="y2", mode="lines+markers"
+    )
 )
 
+fig1.update_layout(
+    title="Volume & Number of Transfers Over Time",
+    xaxis=dict(title="Date"),
+    yaxis=dict(title="Number of Transfers"),
+    yaxis2=dict(title="Volume", overlaying="y", side="right"),
+    legend=dict(orientation="h", y=-0.2),
+    height=500
+)
+st.plotly_chart(fig1, use_container_width=True)
+
+# --- Chart 2: Number of Transfers by Service Over Time -----------------------------------------------------------------
+fig2 = px.bar(
+    df,
+    x="timestamp",
+    y=["gmp_num_txs", "transfers_num_txs"],
+    title="Number of Transfers by Service Over Time",
+)
+fig2.update_layout(barmode="stack", height=400)
+st.plotly_chart(fig2, use_container_width=True)
+
+# --- Chart 3: Volume of Transfers by Service Over Time -----------------------------------------------------------------
+fig3 = px.bar(
+    df,
+    x="timestamp",
+    y=["gmp_volume", "transfers_volume"],
+    title="Volume of Transfers by Service Over Time",
+)
+fig3.update_layout(barmode="stack", height=400)
+st.plotly_chart(fig3, use_container_width=True)
+
+# --- Chart 4 & 5: Donut Charts ----------------------------------------------------------------------------------------
+col1, col2 = st.columns(2)
+
+with col1:
+    fig4 = px.pie(
+        names=["GMP Transfers", "Token Transfers"],
+        values=[df["gmp_num_txs"].sum(), df["transfers_num_txs"].sum()],
+        hole=0.6,
+        title="Total Number of Transfers by Service"
+    )
+    st.plotly_chart(fig4, use_container_width=True)
+
+with col2:
+    fig5 = px.pie(
+        names=["GMP Volume", "Token Transfer Volume"],
+        values=[df["gmp_volume"].sum(), df["transfers_volume"].sum()],
+        hole=0.6,
+        title="Total Volume of Transfers by Service"
+    )
+    st.plotly_chart(fig5, use_container_width=True)
