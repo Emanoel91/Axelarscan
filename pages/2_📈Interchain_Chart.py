@@ -201,19 +201,8 @@ if df_agg.empty:
 st.markdown(
     """
     <style>
-    /* مقدار و رنگ KPI */
-    div[data-testid="stMetricValue"] {
-        font-size: 28px;
-        font-weight: 700;
-        color: #00B8F4; 
-    }
-
-    /* عنوان KPI */
-    div[data-testid="stMetricLabel"] {
-        font-size: 17px;        /* کمی بزرگ‌تر از قبل (۱۵ → ۱۷) */
-        font-weight: 600;       /* اضافه شدن Bold */
-        color: #555;            /* کمی تیره‌تر برای خوانایی بهتر */
-    }
+    div[data-testid="stMetricValue"] {font-size: 28px; font-weight: 700; color: #00B8F4;}
+    div[data-testid="stMetricLabel"] {font-size: 17px; font-weight: 600; color: #555;}
     </style>
     """,
     unsafe_allow_html=True
