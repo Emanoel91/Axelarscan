@@ -207,17 +207,47 @@ k2.metric("Total Volume of Transfers", f"{total_volume:,.2f}")
 
 # ------------------------------- Chart 1: Number (bar) & Volume (line) -----
 fig1 = go.Figure()
-fig1.add_bar(x=df_agg["timestamp"], y=df_agg["num_txs"], name="Number of Transfers", yaxis="y1", opacity=0.75)
-fig1.add_trace(go.Scatter(x=df_agg["timestamp"], y=df_agg["volume"], name="Volume of Transfers", yaxis="y2", mode="lines+markers"))
+
+# Bar: Number of Transfers (آبی)
+fig1.add_bar(
+    x=df_agg["timestamp"],
+    y=df_agg["num_txs"],
+    name="Number of Transfers",
+    yaxis="y1",
+    opacity=0.75,
+    marker_color="#1f77b4"  # آبی
+)
+
+# Line: Volume of Transfers (سبز پررنگ)
+fig1.add_trace(
+    go.Scatter(
+        x=df_agg["timestamp"],
+        y=df_agg["volume"],
+        name="Volume of Transfers",
+        yaxis="y2",
+        mode="lines+markers",
+        line=dict(color="#006400", width=2),  # سبز پررنگ
+        marker=dict(color="#006400")
+    )
+)
+
 fig1.update_layout(
     title="Volume & Number of Transfers Over Time",
     xaxis=dict(title="Date"),
     yaxis=dict(title="Txns count"),
     yaxis2=dict(title="$USD", overlaying="y", side="right"),
-    legend=dict(orientation="h", y=-0.2),
+    legend=dict(
+        orientation="h",   # افقی
+        yanchor="bottom",  # از پایین تراز شود
+        y=1.05,            # کمی بالای نمودار
+        xanchor="center",  # تراز وسط
+        x=0.5              # در وسط محور X
+    ),
     height=480
 )
+
 st.plotly_chart(fig1, use_container_width=True)
+
 
 # ------------------------------- Chart 2: Number by service (stacked) ------
 fig2 = px.bar(df_agg, x="timestamp", y=["gmp_num_txs", "transfers_num_txs"], title="Number of Transfers by Service Over Time",
