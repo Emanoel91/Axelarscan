@@ -89,11 +89,7 @@ st.sidebar.markdown(
 
 # ------------------------------- Helper: timestamp parsing -------------------
 def safe_parse_timestamp_series(series):
-    """
-    ورودی می‌تواند: عدد ثانیه، عدد میلی‌ثانیه یا رشته ISO باشد.
-    تابع تشخیص می‌دهد و pd.to_datetime با unit مناسب فراخوانی می‌شود.
-    در صورت خطا، مقادیر نامعتبر به NaT تبدیل می‌شوند.
-    """
+
     # اگر قبلاً series از نوع datetime باشد، برگردان
     if pd.api.types.is_datetime64_any_dtype(series):
         return pd.to_datetime(series)
