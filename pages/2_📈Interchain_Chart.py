@@ -205,10 +205,10 @@ st.markdown(
     div[data-testid="stMetricValue"] {
         font-size: 28px;
         font-weight: 700;
-        color: #00B8F4; /* آبی هماهنگ با داشبورد */
+        color: #00B8F4; 
     }
     div[data-testid="stMetricLabel"] {
-        font-size: 15px;
+        font-size: 40px;
         color: #888;
     }
     </style>
