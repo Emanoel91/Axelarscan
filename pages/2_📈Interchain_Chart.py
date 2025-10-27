@@ -225,8 +225,8 @@ fig2.update_layout(barmode="stack", height=380)
 st.plotly_chart(fig2, use_container_width=True)
 
 # ------------------------------- Chart 3: Volume by service (stacked) ------
-fig3 = px.bar(df_agg, x="timestamp", y=["gmp_volume", "transfers_volume"], title="Volume of Transfers by Service Over Time")
-fig3.update_layout(barmode="stack", height=380)
+fig3 = px.bar(df_agg, x="timestamp", y=["gmp_volume", "transfers_volume"], title="Volume of Transfers by Service Over Time ($USD)")
+fig3.update_layout(barmode="stack", height=450)
 st.plotly_chart(fig3, use_container_width=True)
 
 # ------------------------------- Donut charts --------------------------------
