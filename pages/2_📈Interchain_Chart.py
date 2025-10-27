@@ -208,7 +208,7 @@ st.markdown(
         color: #00B8F4; 
     }
     div[data-testid="stMetricLabel"] {
-        font-size: 15px;
+        font-size: 150px;
         color: #888;
     }
     </style>
