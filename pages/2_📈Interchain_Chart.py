@@ -198,9 +198,6 @@ if df_agg.empty:
     })
 
 # ------------------------------- KPIs --------------------------------------
-# --- KPI Header ---
-st.markdown("### 🚀 Transfer Key Performance Indicators")
-
 # --- KPI Style ---
 st.markdown(
     """
