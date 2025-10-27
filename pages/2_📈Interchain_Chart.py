@@ -212,8 +212,8 @@ fig1.add_trace(go.Scatter(x=df_agg["timestamp"], y=df_agg["volume"], name="Volum
 fig1.update_layout(
     title="Volume & Number of Transfers Over Time",
     xaxis=dict(title="Date"),
-    yaxis=dict(title="Number of Transfers"),
-    yaxis2=dict(title="Volume of Transfers", overlaying="y", side="right"),
+    yaxis=dict(title="Txns count"),
+    yaxis2=dict(title="$USD", overlaying="y", side="right"),
     legend=dict(orientation="h", y=-0.2),
     height=480
 )
