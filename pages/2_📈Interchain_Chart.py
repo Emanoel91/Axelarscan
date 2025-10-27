@@ -209,7 +209,7 @@ k2.metric("Total Volume of Transfers", f"{total_volume:,.2f}")
 fig1 = go.Figure()
 
 fig1.add_bar(x=df_agg["timestamp"], y=df_agg["num_txs"], name="Number of Transfers", yaxis="y1", opacity=0.75, marker_color="#178eff")
-fig1.add_trace(go.Scatter(x=df_agg["timestamp"], y=df_agg["volume"], name="Volume of Transfers", yaxis="y2", mode="lines+markers", line=dict(color="#f96819", width=2),
+fig1.add_trace(go.Scatter(x=df_agg["timestamp"], y=df_agg["volume"], name="Volume of Transfers", yaxis="y2", mode="lines", line=dict(color="#f96819", width=2),
         marker=dict(color="#006400")))
 fig1.update_layout(title="Volume & Number of Transfers Over Time", xaxis=dict(title="Date"), yaxis=dict(title="Txns count"), yaxis2=dict(title="$USD", overlaying="y", side="right"),
     legend=dict(orientation="h", yanchor="bottom", y=1.05, xanchor="center", x=0.5), height=480)
