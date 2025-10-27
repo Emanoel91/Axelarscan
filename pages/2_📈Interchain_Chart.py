@@ -198,32 +198,38 @@ if df_agg.empty:
     })
 
 # ------------------------------- KPIs --------------------------------------
+# --- KPI Header ---
+st.markdown("### 🚀 Transfer Key Performance Indicators")
+
+# --- KPI Style ---
+st.markdown(
+    """
+    <style>
+    div[data-testid="stMetricValue"] {
+        font-size: 28px;
+        font-weight: 700;
+        color: #00B8F4; /* آبی هماهنگ با داشبورد */
+    }
+    div[data-testid="stMetricLabel"] {
+        font-size: 15px;
+        color: #888;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
+# --- KPI Data ---
 total_txs = int(df_agg["num_txs"].sum()) if not df_agg.empty else 0
 total_volume = float(df_agg["volume"].sum()) if not df_agg.empty else 0.0
 
+# --- KPI Layout ---
 col1, col2 = st.columns(2)
-
 with col1:
-    st.markdown(
-        f"""
-        <div style="background-color:#ffffff; padding:20px; border-radius:15px; text-align:center; box-shadow:0 4px 10px rgba(0,0,0,0.05);">
-            <h2 style="color:#1f77b4; font-size:22px; margin-bottom:5px;">Total Number of Transfers</h2>
-            <h1 style="color:#1f77b4; font-size:48px; font-weight:bold;">{total_txs:,}</h1>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
-
+    st.metric("🔹 Total Number of Transfers", f"{total_txs:,}")
 with col2:
-    st.markdown(
-        f"""
-        <div style="background-color:#ffffff; padding:20px; border-radius:15px; text-align:center; box-shadow:0 4px 10px rgba(0,0,0,0.05);">
-            <h2 style="color:#006400; font-size:22px; margin-bottom:5px;">Total Volume of Transfers</h2>
-            <h1 style="color:#006400; font-size:48px; font-weight:bold;">${total_volume:,.2f}</h1>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
+    st.metric("💵 Total Volume of Transfers (USD)", f"${total_volume:,.2f}")
+
 # ------------------------------- Chart 1: Number (bar) & Volume (line) -----
 fig1 = go.Figure()
 
