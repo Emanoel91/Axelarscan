@@ -226,11 +226,10 @@ st.plotly_chart(fig2, use_container_width=True)
 
 # ------------------------------- Chart 3: Volume by service (stacked) ------
 fig3 = px.bar(df_agg, x="timestamp", y=["gmp_volume", "transfers_volume"], title="Volume of Transfers by Service Over Time ($USD)",
-    labels={"value": "$USD", "variable": "Service", "timestamp": "Date"}, color_discrete_map={"gmp_volume": "#fd9a57", "transfers_volume": "#85c2fb"})
+    labels={"value": "Volume ($USD)", "variable": "Service", "timestamp": "Date"}, color_discrete_map={"gmp_volume": "#fd9a57", "transfers_volume": "#85c2fb"})
 fig3.for_each_trace(lambda t: t.update(name="GMP" if t.name == "gmp_volume" else "Token Transfer"))
 fig3.update_layout(barmode="stack", height=450)
 st.plotly_chart(fig3, use_container_width=True)
-
 
 # ------------------------------- Donut charts --------------------------------
 col_a, col_b = st.columns(2)
