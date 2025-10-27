@@ -198,18 +198,21 @@ if df_agg.empty:
     })
 
 # ------------------------------- KPIs --------------------------------------
-# --- KPI Style ---
 st.markdown(
     """
     <style>
+    /* مقدار و رنگ KPI */
     div[data-testid="stMetricValue"] {
         font-size: 28px;
         font-weight: 700;
         color: #00B8F4; 
     }
+
+    /* عنوان KPI */
     div[data-testid="stMetricLabel"] {
-        font-size: 15px;
-        color: #888;
+        font-size: 17px;        /* کمی بزرگ‌تر از قبل (۱۵ → ۱۷) */
+        font-weight: 600;       /* اضافه شدن Bold */
+        color: #555;            /* کمی تیره‌تر برای خوانایی بهتر */
     }
     </style>
     """,
@@ -226,6 +229,7 @@ with col1:
     st.metric("🔹 Total Number of Transfers", f"{total_txs:,}")
 with col2:
     st.metric("💵 Total Volume of Transfers (USD)", f"${total_volume:,.2f}")
+
 
 # ------------------------------- Chart 1: Number (bar) & Volume (line) -----
 fig1 = go.Figure()
