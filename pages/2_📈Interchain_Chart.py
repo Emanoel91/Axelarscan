@@ -220,7 +220,9 @@ fig1.update_layout(
 st.plotly_chart(fig1, use_container_width=True)
 
 # ------------------------------- Chart 2: Number by service (stacked) ------
-fig2 = px.bar(df_agg, x="timestamp", y=["gmp_num_txs", "transfers_num_txs"], title="Number of Transfers by Service Over Time")
+fig2 = px.bar(df_agg, x="timestamp", y=["gmp_num_txs", "transfers_num_txs"], title="Number of Transfers by Service Over Time",
+             labels={"value": "Txns count", "variable": "Service", "timestamp": "Date"}, color_discrete_map={"gmp_num_txs": "#fd9a57", "transfers_num_txs": "#85c2fb"})
+fig2.for_each_trace(lambda t: t.update(name="GMP" if t.name == "gmp_num_txs" else "Token Transfer"))
 fig2.update_layout(barmode="stack", height=450)
 st.plotly_chart(fig2, use_container_width=True)
 
