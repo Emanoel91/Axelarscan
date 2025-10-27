@@ -8,9 +8,6 @@ from datetime import datetime, time as dtime
 # -------------------------------- Page config --------------------------------
 st.set_page_config(page_title="Axelarscan", page_icon="https://axelarscan.io/logos/logo.png", layout="wide")
 st.title("📈 Interchain Chart")
-st.info("📊Charts initially display data for a default time range. Select a custom range to view results for your desired period.")
-st.info("⏳On-chain data retrieval may take a few moments. Please wait while the results load.")
-
 # ------------------------------- Chains list ---------------------------------
 chains = [
     "Avalanche","Axelarnet","Ethereum","Fantom","Moonbeam","Polygon","acre","agoric",
