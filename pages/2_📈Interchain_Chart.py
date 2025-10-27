@@ -89,27 +89,26 @@ st.sidebar.markdown(
 
 # ------------------------------- Helper: timestamp parsing -------------------
 def safe_parse_timestamp_series(series):
-
-    # اگر قبلاً series از نوع datetime باشد، برگردان
+    """
+    The input can be a number of seconds, a number of milliseconds, or an ISO-formatted string.
+    The function automatically detects the type and calls pd.to_datetime with the appropriate unit.
+    In case of an error, invalid values are converted to NaT.
+    """
+    # If the input is already a Series of type datetime, return it as is.
     if pd.api.types.is_datetime64_any_dtype(series):
         return pd.to_datetime(series)
 
-    # تلاش برای تفسیر اعداد
     nums = pd.to_numeric(series, errors="coerce")
     if nums.notna().any():
         maxv = nums.max()
-        # تشخیص میلی‌ثانیه یا ثانیه براساس بزرگی عدد
         if maxv > 1e11:
             unit = "ms"
         else:
             unit = "s"
         dt = pd.to_datetime(nums, unit=unit, errors="coerce")
-        # اگر تقریباً همه NaT شد، احتمالاً رشته ISO هستند — تلاش دوباره
         if dt.notna().sum() == 0:
             return pd.to_datetime(series, errors="coerce")
         return dt
-
-    # اگر به صورت رشته ISO باشد
     return pd.to_datetime(series, errors="coerce")
 
 # ------------------------------- Build API params ----------------------------
@@ -218,7 +217,6 @@ with col2:
 
 # ------------------------------- Chart 1: Number (bar) & Volume (line) -----
 fig1 = go.Figure()
-
 fig1.add_bar(x=df_agg["timestamp"], y=df_agg["num_txs"], name="Number of Transfers", yaxis="y1", opacity=0.75, marker_color="#178eff")
 fig1.add_trace(go.Scatter(x=df_agg["timestamp"], y=df_agg["volume"], name="Volume of Transfers", yaxis="y2", mode="lines", line=dict(color="#f96819", width=2),
         marker=dict(color="#006400")))
