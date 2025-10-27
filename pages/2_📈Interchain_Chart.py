@@ -203,7 +203,7 @@ st.markdown(
     """
     <style>
     div[data-testid="stMetricValue"] {
-        font-size: 56px;
+        font-size: 28px;
         font-weight: 700;
         color: #00B8F4; 
     }
