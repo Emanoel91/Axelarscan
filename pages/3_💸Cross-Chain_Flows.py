@@ -2,7 +2,9 @@ import streamlit as st
 import pandas as pd
 import requests
 import plotly.express as px
+import plotly.graph_objects as go
 from datetime import datetime, time as dtime
+import numpy as np
 
 # ------------------------------- Page config --------------------------------
 st.set_page_config(
@@ -123,76 +125,78 @@ if run_button:
             df_in, df_out, df_comb = compute_volumes(data)
 
             # 1️⃣ Incoming Volume Chart
+            df_in_sorted = df_in.sort_values("volume", ascending=True)
             fig_in = px.bar(
-                df_in.sort_values("volume", ascending=True),
+                df_in_sorted,
                 x="volume", y="chain", orientation="h",
                 title="📈 Total Incoming Volume (Destination Chains)",
                 color="chain", color_discrete_sequence=px.colors.qualitative.Bold,
-                text=df_in["volume"].round(2)
+                text=df_in_sorted["volume"].round(2)
             )
-            fig_in.update_layout(
-                xaxis_title="Volume (USD)",
-                yaxis_title="Destination Chain",
-                showlegend=False,
-                height=900
-            )
+            fig_in.update_layout(xaxis_title="Volume (USD)", yaxis_title="Destination Chain",
+                                 showlegend=False, height=900)
             fig_in.update_traces(textposition="outside")
 
             # 2️⃣ Outgoing Volume Chart
+            df_out_sorted = df_out.sort_values("volume", ascending=True)
             fig_out = px.bar(
-                df_out.sort_values("volume", ascending=True),
+                df_out_sorted,
                 x="volume", y="chain", orientation="h",
                 title="📉 Total Outgoing Volume (Source Chains)",
                 color="chain", color_discrete_sequence=px.colors.qualitative.Safe,
-                text=df_out["volume"].round(2)
+                text=df_out_sorted["volume"].round(2)
             )
-            fig_out.update_layout(
-                xaxis_title="Volume (USD)",
-                yaxis_title="Source Chain",
-                showlegend=False,
-                height=900
-            )
+            fig_out.update_layout(xaxis_title="Volume (USD)", yaxis_title="Source Chain",
+                                  showlegend=False, height=900)
             fig_out.update_traces(textposition="outside")
 
             # 3️⃣ Net Volume Chart
-            df_comb = df_comb.sort_values("net_volume", ascending=True)
-            df_comb["color"] = df_comb["net_volume"].apply(lambda x: "red" if x < 0 else "green")
+            df_comb_sorted = df_comb.sort_values("net_volume", ascending=True)
+            df_comb_sorted["color"] = df_comb_sorted["net_volume"].apply(lambda x: "red" if x < 0 else "green")
 
             fig_net = px.bar(
-                df_comb,
+                df_comb_sorted,
                 x="net_volume", y="chain", orientation="h",
                 title="⚖️ Net Volume (Incoming - Outgoing)",
                 color="color",
                 color_discrete_map={"green": "green", "red": "red"},
-                text=df_comb["net_volume"].round(2)
+                text=df_comb_sorted["net_volume"].round(2)
             )
-            fig_net.update_layout(
-                xaxis_title="Net Volume (USD)",
-                yaxis_title="Chain",
-                showlegend=False,
-                height=900
-            )
+            fig_net.update_layout(xaxis_title="Net Volume (USD)", yaxis_title="Chain",
+                                  showlegend=False, height=900)
             fig_net.update_traces(textposition="outside")
 
-            # 4️⃣ Net Volume Bubble Chart
-            df_comb["abs_volume"] = df_comb["net_volume"].abs()
-            df_comb["label"] = df_comb.apply(lambda r: f"{r['chain']} ({r['net_volume']:.2f})", axis=1)
+            # 4️⃣ Bubble Cloud Chart (No axes)
+            df_comb_sorted["abs_volume"] = df_comb_sorted["net_volume"].abs()
+            df_comb_sorted["color"] = df_comb_sorted["net_volume"].apply(lambda x: "green" if x >= 0 else "red")
+            df_comb_sorted["label"] = df_comb_sorted.apply(lambda r: f"{r['chain']} ({r['net_volume']:.2f})", axis=1)
 
-            fig_bubble = px.scatter(
-                df_comb,
-                x="chain",
-                y="net_volume",
-                size="abs_volume",
-                color="color",
-                color_discrete_map={"green": "green", "red": "red"},
-                text="label",
-                title="🫧 Net Volume Bubble Chart (Incoming - Outgoing)",
-                size_max=60
-            )
-            fig_bubble.update_traces(textposition="top center")
+            # Random coordinates for a scattered "bubble cloud" look
+            np.random.seed(42)
+            df_comb_sorted["x"] = np.random.rand(len(df_comb_sorted))
+            df_comb_sorted["y"] = np.random.rand(len(df_comb_sorted))
+
+            fig_bubble = go.Figure()
+            for _, row in df_comb_sorted.iterrows():
+                fig_bubble.add_trace(go.Scatter(
+                    x=[row["x"]],
+                    y=[row["y"]],
+                    mode="markers+text",
+                    text=[row["label"]],
+                    textposition="middle center",
+                    marker=dict(
+                        size=max(10, np.sqrt(row["abs_volume"]) / 1000),  # scale bubble size
+                        color=row["color"],
+                        opacity=0.7,
+                        line=dict(width=1, color="white")
+                    ),
+                    hoverinfo="text"
+                ))
+
             fig_bubble.update_layout(
-                xaxis_title="Chain",
-                yaxis_title="Net Volume (USD)",
+                title="🫧 Net Volume Bubble Cloud (Positive vs Negative)",
+                xaxis=dict(visible=False),
+                yaxis=dict(visible=False),
                 height=900,
                 showlegend=False
             )
