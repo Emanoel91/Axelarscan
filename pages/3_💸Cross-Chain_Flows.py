@@ -259,7 +259,7 @@ if run_button:
                 title="🫧 Net Volume Bubble Cloud",
                 xaxis=dict(visible=False),
                 yaxis=dict(visible=False),
-                height=700,
+                height=550,
                 margin=dict(l=20,r=20,t=50,b=20),
                 plot_bgcolor="rgba(0,0,0,0)",
                 showlegend=False
