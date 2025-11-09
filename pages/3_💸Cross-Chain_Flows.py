@@ -203,7 +203,6 @@ if run_button:
 
             # ------------------- 4️⃣ Bubble Chart -------------------
             df_comb_sorted["bubble_size"] = df_comb_sorted["net_volume"].apply(bubble_size_category)
-            # ایجاد متن حباب شامل نام زنجیره و مقدار
             df_comb_sorted["label"] = df_comb_sorted.apply(
                 lambda r: f"{r['chain']}\n{format_volume(r['net_volume'])}", axis=1
             )
@@ -211,8 +210,8 @@ if run_button:
 
             fig_bubble = go.Figure()
             for _, row in df_comb_sorted.iterrows():
-                # اندازه فونت را بر اساس اندازه حباب تعیین می‌کنیم
-                font_size = max(10, row["bubble_size"]//3)
+                # اندازه فونت برای متن درون حباب با توجه به طول متن و اندازه حباب تنظیم می‌شود
+                font_size = max(8, min(row["bubble_size"]//3, 20))
                 fig_bubble.add_trace(go.Scatter(
                     x=[row["x"]], y=[row["y"]],
                     mode="markers+text",
