@@ -12,7 +12,7 @@ st.set_page_config(
     page_icon="https://axelarscan.io/logos/logo.png",
     layout="wide"
 )
-st.title("💹 Cross-Chain Volume Analytics (GMPStatsByChains)")
+st.title("💸Cross-Chain Flows (GMP Stats)")
 
 # ------------------------------- Sidebar Footer -----------------------------
 st.sidebar.markdown(
@@ -219,7 +219,7 @@ if run_button:
                         opacity=0.7,
                         line=dict(width=2,color="#333")
                     ),
-                    textfont=dict(color="gray", size=12, family="Arial"),
+                    textfont=dict(color="white", size=12, family="Arial"),
                     hoverinfo="text"
                 ))
             fig_bubble.update_layout(
