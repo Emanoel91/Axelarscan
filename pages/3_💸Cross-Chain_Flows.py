@@ -14,6 +14,50 @@ st.set_page_config(
 )
 st.title("💹 Cross-Chain Volume Analytics (GMPStatsByChains)")
 
+# ------------------------------- Sidebar Footer -----------------------------
+st.sidebar.markdown(
+    """
+    <style>
+    .sidebar-footer {
+        position: fixed;
+        bottom: 20px;
+        width: 250px;
+        font-size: 13px;
+        color: gray;
+        margin-left: 5px; 
+        text-align: left;  
+    }
+    .sidebar-footer img {
+        width: 16px;
+        height: 16px;
+        vertical-align: middle;
+        border-radius: 50%;
+        margin-right: 5px;
+    }
+    .sidebar-footer a {
+        color: gray;
+        text-decoration: none;
+    }
+    </style>
+
+    <div class="sidebar-footer">
+        <div>
+            <a href="https://x.com/axelar" target="_blank">
+                <img src="https://img.cryptorank.io/coins/axelar1663924228506.png" alt="Axelar Logo">
+                Powered by Axelar
+            </a>
+        </div>
+        <div style="margin-top: 5px;">
+            <a href="https://x.com/0xeman_raz" target="_blank">
+                <img src="https://pbs.twimg.com/profile_images/1841479747332608000/bindDGZQ_400x400.jpg" alt="Eman Raz">
+                Built by Eman Raz
+            </a>
+        </div>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
+
 # ------------------------------- Default date range --------------------------
 default_start = datetime(2025, 1, 1).date()
 default_end = datetime(2026, 1, 1).date()
@@ -175,7 +219,7 @@ if run_button:
                         opacity=0.7,
                         line=dict(width=2,color="#333")
                     ),
-                    textfont=dict(color="blue", size=12, family="Arial"),
+                    textfont=dict(color="gray", size=12, family="Arial"),
                     hoverinfo="text"
                 ))
             fig_bubble.update_layout(
