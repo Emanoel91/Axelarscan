@@ -111,6 +111,32 @@ def compute_volumes(source_chains):
     df_combined["net_volume"] = df_combined["volume_in"] - df_combined["volume_out"]
     return df_in, df_out, df_combined
 
+# ------------------------------- Bubble Packing Helper ----------------------
+def pack_bubbles(sizes, width=1.0, height=1.0, padding=0.01, iterations=2000):
+    """Force-directed bubble packing."""
+    n = len(sizes)
+    positions = np.random.rand(n, 2) * 0.8 + 0.1  # start in center area
+    radii = sizes / 2 / max(sizes) * 0.1  # normalized radii
+
+    for _ in range(iterations):
+        for i in range(n):
+            for j in range(i+1, n):
+                dx = positions[j,0] - positions[i,0]
+                dy = positions[j,1] - positions[i,1]
+                dist = np.hypot(dx, dy)
+                min_dist = radii[i] + radii[j] + padding
+                if dist < min_dist:
+                    if dist == 0:
+                        dx, dy = np.random.rand(2)-0.5
+                        dist = np.hypot(dx, dy)
+                    shift = (min_dist - dist)/2
+                    positions[i,0] -= dx/dist*shift
+                    positions[i,1] -= dy/dist*shift
+                    positions[j,0] += dx/dist*shift
+                    positions[j,1] += dy/dist*shift
+        positions = np.clip(positions, 0, 1)
+    return positions[:,0], positions[:,1]
+
 # ------------------------------- Main Logic ---------------------------------
 if run_button:
     with st.spinner("Fetching data and building charts..."):
@@ -121,7 +147,7 @@ if run_button:
         else:
             df_in, df_out, df_comb = compute_volumes(data)
 
-            # Bar Charts (unchanged)
+            # Bar Charts
             df_in_sorted = df_in.sort_values("volume", ascending=True)
             fig_in = px.bar(
                 df_in_sorted,
@@ -161,7 +187,7 @@ if run_button:
                                   showlegend=False, height=600)
             fig_net.update_traces(textposition="outside")
 
-            # ------------------- Bubble Chart (Packing + Bold) -------------------
+            # ------------------- Bubble Chart -------------------
             def format_volume(v):
                 abs_v = abs(v)
                 if abs_v >= 1_000_000_000:
@@ -174,38 +200,13 @@ if run_button:
                     return f"{v:.2f}"
 
             df_comb_sorted["abs_volume"] = df_comb_sorted["net_volume"].abs()
-            df_comb_sorted["color"] = df_comb_sorted["net_volume"].apply(lambda x: "green" if x >= 0 else "red")
-            df_comb_sorted["label"] = df_comb_sorted.apply(lambda r: f"<b>{r['chain']}</b>\n{format_volume(r['net_volume'])}", axis=1)
-
-            # Logarithmic scaling for bubble size
-            df_comb_sorted["bubble_size"] = df_comb_sorted["abs_volume"].apply(lambda v: 20 + 100 * np.log1p(v) / np.log1p(df_comb_sorted["abs_volume"].max()))
-
-            # Simple force-directed packing
-            def pack_bubbles(sizes, iterations=200):
-                n = len(sizes)
-                positions = np.random.rand(n, 2)
-                radii = sizes / 2
-
-                for _ in range(iterations):
-                    for i in range(n):
-                        for j in range(i + 1, n):
-                            dx = positions[j, 0] - positions[i, 0]
-                            dy = positions[j, 1] - positions[i, 1]
-                            dist = np.hypot(dx, dy)
-                            min_dist = radii[i] + radii[j] + 0.01
-                            if dist < min_dist:
-                                # Move away proportionally
-                                if dist == 0:
-                                    dx, dy = np.random.rand(2) - 0.5
-                                    dist = np.hypot(dx, dy)
-                                shift = (min_dist - dist) / 2
-                                positions[i, 0] -= dx/dist*shift
-                                positions[i, 1] -= dy/dist*shift
-                                positions[j, 0] += dx/dist*shift
-                                positions[j, 1] += dy/dist*shift
-                    # Keep inside bounds
-                    positions = np.clip(positions, 0, 1)
-                return positions[:, 0], positions[:, 1]
+            df_comb_sorted["bubble_size"] = df_comb_sorted["abs_volume"].apply(
+                lambda v: 20 + 100*np.log1p(v)/np.log1p(df_comb_sorted["abs_volume"].max())
+            )
+            df_comb_sorted["color"] = df_comb_sorted["net_volume"].apply(lambda x: "green" if x >=0 else "red")
+            df_comb_sorted["label"] = df_comb_sorted.apply(
+                lambda r: f"<b>{r['chain']}</b>\n{format_volume(r['net_volume'])}", axis=1
+            )
 
             df_comb_sorted["x"], df_comb_sorted["y"] = pack_bubbles(df_comb_sorted["bubble_size"].values)
 
@@ -231,9 +232,9 @@ if run_button:
                 title="🫧 Net Volume Bubble Cloud (Positive vs Negative)",
                 xaxis=dict(visible=False),
                 yaxis=dict(visible=False),
-                height=600,
+                height=700,
                 showlegend=False,
-                margin=dict(l=20, r=20, t=50, b=20),
+                margin=dict(l=20,r=20,t=50,b=20),
                 plot_bgcolor="rgba(0,0,0,0)"
             )
 
