@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import requests
+import plotly.express as px
 import plotly.graph_objects as go
 from datetime import datetime, time as dtime
 import numpy as np
@@ -106,58 +107,90 @@ def compute_volumes(source_chains):
 
 # ------------------------------- Circle Packing -----------------------------
 def pack_circles(df):
-    """Simple circle packing: avoid overlaps iteratively."""
+    """Circle packing with iterative repulsion to avoid overlaps."""
+    df = df.reset_index(drop=True)  # RESET INDEX to avoid KeyError
     n = len(df)
-    # initial random positions
     np.random.seed(42)
     df["x"] = np.random.rand(n)
     df["y"] = np.random.rand(n)
-    max_radius = df["bubble_size"].max()
     df["radius"] = df["bubble_size"] / 2
 
-    # simple iterative repulsion to reduce overlap
     for _ in range(1000):
         for i in range(n):
-            for j in range(i+1, n):
-                dx = df.at[j, "x"] - df.at[i, "x"]
-                dy = df.at[j, "y"] - df.at[i, "y"]
+            for j in range(i + 1, n):
+                dx = df.iloc[j]["x"] - df.iloc[i]["x"]
+                dy = df.iloc[j]["y"] - df.iloc[i]["y"]
                 dist = np.sqrt(dx**2 + dy**2)
-                min_dist = df.at[i, "radius"] + df.at[j, "radius"]
+                min_dist = df.iloc[i]["radius"] + df.iloc[j]["radius"]
                 if dist < min_dist:
-                    # push circles away
                     if dist == 0:
                         dx, dy = np.random.rand(2) - 0.5
                         dist = np.sqrt(dx**2 + dy**2)
                     shift = (min_dist - dist) / 2
-                    df.at[i, "x"] -= dx/dist * shift
-                    df.at[i, "y"] -= dy/dist * shift
-                    df.at[j, "x"] += dx/dist * shift
-                    df.at[j, "y"] += dy/dist * shift
+                    df.at[i, "x"] -= dx / dist * shift
+                    df.at[i, "y"] -= dy / dist * shift
+                    df.at[j, "x"] += dx / dist * shift
+                    df.at[j, "y"] += dy / dist * shift
     return df
 
 # ------------------------------- Main Logic ---------------------------------
 if run_button:
     with st.spinner("Fetching data and building charts..."):
         data = fetch_gmp_data(from_date, to_date)
-
         if not data:
             st.warning("No data returned from API for the selected period.")
         else:
             df_in, df_out, df_comb = compute_volumes(data)
 
-            # Normalize bubble sizes
-            df_comb["abs_volume"] = df_comb["net_volume"].abs()
-            max_vol = df_comb["abs_volume"].max()
-            df_comb["bubble_size"] = df_comb["abs_volume"].apply(lambda v: 20 + (v / max_vol) * 80)
-            df_comb["color"] = df_comb["net_volume"].apply(lambda x: "green" if x >= 0 else "red")
-            df_comb["label"] = df_comb.apply(lambda r: f"{r['chain']}\n{r['net_volume']:.2f}", axis=1)
+            # Incoming Volume
+            df_in_sorted = df_in.sort_values("volume", ascending=True)
+            fig_in = px.bar(
+                df_in_sorted, x="volume", y="chain", orientation="h",
+                title="📈 Total Incoming Volume (Destination Chains)",
+                color="chain", color_discrete_sequence=px.colors.qualitative.Bold,
+                text=df_in_sorted["volume"].round(2)
+            )
+            fig_in.update_layout(xaxis_title="Volume (USD)", yaxis_title="Destination Chain",
+                                 showlegend=False, height=900)
+            fig_in.update_traces(textposition="outside")
 
-            # Circle packing
-            df_comb = pack_circles(df_comb)
+            # Outgoing Volume
+            df_out_sorted = df_out.sort_values("volume", ascending=True)
+            fig_out = px.bar(
+                df_out_sorted, x="volume", y="chain", orientation="h",
+                title="📉 Total Outgoing Volume (Source Chains)",
+                color="chain", color_discrete_sequence=px.colors.qualitative.Safe,
+                text=df_out_sorted["volume"].round(2)
+            )
+            fig_out.update_layout(xaxis_title="Volume (USD)", yaxis_title="Source Chain",
+                                  showlegend=False, height=900)
+            fig_out.update_traces(textposition="outside")
 
-            # Plot bubble cloud
+            # Net Volume
+            df_comb_sorted = df_comb.sort_values("net_volume", ascending=True)
+            df_comb_sorted["color"] = df_comb_sorted["net_volume"].apply(lambda x: "red" if x < 0 else "green")
+            fig_net = px.bar(
+                df_comb_sorted, x="net_volume", y="chain", orientation="h",
+                title="⚖️ Net Volume (Incoming - Outgoing)",
+                color="color",
+                color_discrete_map={"green": "green", "red": "red"},
+                text=df_comb_sorted["net_volume"].round(2)
+            )
+            fig_net.update_layout(xaxis_title="Net Volume (USD)", yaxis_title="Chain",
+                                  showlegend=False, height=900)
+            fig_net.update_traces(textposition="outside")
+
+            # Circle-Packed Bubble Cloud
+            df_comb_sorted["abs_volume"] = df_comb_sorted["net_volume"].abs()
+            max_vol = df_comb_sorted["abs_volume"].max()
+            df_comb_sorted["bubble_size"] = df_comb_sorted["abs_volume"].apply(lambda v: 20 + (v / max_vol) * 80)
+            df_comb_sorted["color"] = df_comb_sorted["net_volume"].apply(lambda x: "green" if x >= 0 else "red")
+            df_comb_sorted["label"] = df_comb_sorted.apply(lambda r: f"{r['chain']}\n{r['net_volume']:.2f}", axis=1)
+
+            df_comb_sorted = pack_circles(df_comb_sorted)
+
             fig_bubble = go.Figure()
-            for _, row in df_comb.iterrows():
+            for _, row in df_comb_sorted.iterrows():
                 fig_bubble.add_trace(go.Scatter(
                     x=[row["x"]], y=[row["y"]],
                     mode="markers+text",
@@ -183,6 +216,10 @@ if run_button:
                 plot_bgcolor="rgba(0,0,0,0)"
             )
 
+            # Display all charts
+            st.plotly_chart(fig_in, use_container_width=True)
+            st.plotly_chart(fig_out, use_container_width=True)
+            st.plotly_chart(fig_net, use_container_width=True)
             st.plotly_chart(fig_bubble, use_container_width=True)
 
 else:
