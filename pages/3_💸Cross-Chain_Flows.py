@@ -103,6 +103,12 @@ def compute_volumes(source_chains):
     df_in = pd.DataFrame(list(incoming.items()), columns=["chain", "volume"])
     df_out = pd.DataFrame(list(outgoing.items()), columns=["chain", "volume"])
     df_combined = pd.merge(df_in, df_out, on="chain", how="outer", suffixes=("_in", "_out")).fillna(0)
+
+    # Remove zero-volume chains
+    df_in = df_in[df_in["volume"] > 0]
+    df_out = df_out[df_out["volume"] > 0]
+    df_combined = df_combined[(df_combined["volume_in"] > 0) | (df_combined["volume_out"] > 0)]
+
     df_combined["net_volume"] = df_combined["volume_in"] - df_combined["volume_out"]
     return df_in, df_out, df_combined
 
@@ -121,30 +127,32 @@ if run_button:
                 df_in.sort_values("volume", ascending=True),
                 x="volume", y="chain", orientation="h",
                 title="📈 Total Incoming Volume (Destination Chains)",
-                color="chain", color_discrete_sequence=px.colors.qualitative.Bold
+                color="chain", color_discrete_sequence=px.colors.qualitative.Bold,
+                text=df_in["volume"].round(2)
             )
-            fig_in.update_traces(text=None)  # remove labels
             fig_in.update_layout(
                 xaxis_title="Volume (USD)",
                 yaxis_title="Destination Chain",
                 showlegend=False,
                 height=900
             )
+            fig_in.update_traces(textposition="outside")
 
             # 2️⃣ Outgoing Volume Chart
             fig_out = px.bar(
                 df_out.sort_values("volume", ascending=True),
                 x="volume", y="chain", orientation="h",
                 title="📉 Total Outgoing Volume (Source Chains)",
-                color="chain", color_discrete_sequence=px.colors.qualitative.Safe
+                color="chain", color_discrete_sequence=px.colors.qualitative.Safe,
+                text=df_out["volume"].round(2)
             )
-            fig_out.update_traces(text=None)
             fig_out.update_layout(
                 xaxis_title="Volume (USD)",
                 yaxis_title="Source Chain",
                 showlegend=False,
                 height=900
             )
+            fig_out.update_traces(textposition="outside")
 
             # 3️⃣ Net Volume Chart
             df_comb = df_comb.sort_values("net_volume", ascending=True)
@@ -155,19 +163,44 @@ if run_button:
                 x="net_volume", y="chain", orientation="h",
                 title="⚖️ Net Volume (Incoming - Outgoing)",
                 color="color",
-                color_discrete_map={"green": "green", "red": "red"}
+                color_discrete_map={"green": "green", "red": "red"},
+                text=df_comb["net_volume"].round(2)
             )
-            fig_net.update_traces(text=None)
             fig_net.update_layout(
                 xaxis_title="Net Volume (USD)",
                 yaxis_title="Chain",
                 showlegend=False,
                 height=900
             )
+            fig_net.update_traces(textposition="outside")
+
+            # 4️⃣ Net Volume Bubble Chart
+            df_comb["abs_volume"] = df_comb["net_volume"].abs()
+            df_comb["label"] = df_comb.apply(lambda r: f"{r['chain']} ({r['net_volume']:.2f})", axis=1)
+
+            fig_bubble = px.scatter(
+                df_comb,
+                x="chain",
+                y="net_volume",
+                size="abs_volume",
+                color="color",
+                color_discrete_map={"green": "green", "red": "red"},
+                text="label",
+                title="🫧 Net Volume Bubble Chart (Incoming - Outgoing)",
+                size_max=60
+            )
+            fig_bubble.update_traces(textposition="top center")
+            fig_bubble.update_layout(
+                xaxis_title="Chain",
+                yaxis_title="Net Volume (USD)",
+                height=900,
+                showlegend=False
+            )
 
             # Display all charts
             st.plotly_chart(fig_in, use_container_width=True)
             st.plotly_chart(fig_out, use_container_width=True)
             st.plotly_chart(fig_net, use_container_width=True)
+            st.plotly_chart(fig_bubble, use_container_width=True)
 else:
     st.info("👆 Select a date range and click **Fetch Data** to load charts.")
