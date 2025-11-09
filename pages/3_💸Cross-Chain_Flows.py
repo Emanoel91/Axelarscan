@@ -134,7 +134,7 @@ if run_button:
                 text=df_in_sorted["volume"].round(2)
             )
             fig_in.update_layout(xaxis_title="Volume (USD)", yaxis_title="Destination Chain",
-                                 showlegend=False, height=900)
+                                 showlegend=False, height=600)
             fig_in.update_traces(textposition="outside")
 
             # 2️⃣ Outgoing Volume Chart
@@ -147,7 +147,7 @@ if run_button:
                 text=df_out_sorted["volume"].round(2)
             )
             fig_out.update_layout(xaxis_title="Volume (USD)", yaxis_title="Source Chain",
-                                  showlegend=False, height=900)
+                                  showlegend=False, height=600)
             fig_out.update_traces(textposition="outside")
 
             # 3️⃣ Net Volume Chart
@@ -163,7 +163,7 @@ if run_button:
                 text=df_comb_sorted["net_volume"].round(2)
             )
             fig_net.update_layout(xaxis_title="Net Volume (USD)", yaxis_title="Chain",
-                                  showlegend=False, height=900)
+                                  showlegend=False, height=600)
             fig_net.update_traces(textposition="outside")
 
             # 4️⃣ CryptoBubbles-style Bubble Cloud (Improved)
