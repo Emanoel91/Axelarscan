@@ -167,9 +167,21 @@ if run_button:
             fig_net.update_traces(textposition="outside")
 
             # 4️⃣ CryptoBubbles-style Bubble Cloud (Improved)
+            # Helper: Format large numbers
+            def format_volume(v):
+                abs_v = abs(v)
+                if abs_v >= 1_000_000_000:
+                    return f"{v/1_000_000_000:.2f}B"
+                elif abs_v >= 1_000_000:
+                    return f"{v/1_000_000:.2f}m"
+                elif abs_v >= 1_000:
+                    return f"{v/1_000:.2f}k"
+                else:
+                    return f"{v:.2f}"
+                    
             df_comb_sorted["abs_volume"] = df_comb_sorted["net_volume"].abs()
             df_comb_sorted["color"] = df_comb_sorted["net_volume"].apply(lambda x: "green" if x >= 0 else "red")
-            df_comb_sorted["label"] = df_comb_sorted.apply(lambda r: f"{r['chain']}\n{r['net_volume']:.2f}", axis=1)
+            df_comb_sorted["label"] = df_comb_sorted.apply(lambda r: f"{r['chain']}\n{format_volume(r['net_volume'])}", axis=1)
 
             # Normalize bubble sizes
             max_vol = df_comb_sorted["abs_volume"].max()
