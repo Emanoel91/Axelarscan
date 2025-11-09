@@ -173,7 +173,7 @@ if run_button:
 
             # Normalize bubble sizes
             max_vol = df_comb_sorted["abs_volume"].max()
-            df_comb_sorted["bubble_size"] = df_comb_sorted["abs_volume"].apply(lambda v: 50 + (v / max_vol) * 80)
+            df_comb_sorted["bubble_size"] = df_comb_sorted["abs_volume"].apply(lambda v: 35 + (v / max_vol) * 80)
 
             # Random positions closer together for tighter packing
             np.random.seed(0)
