@@ -173,7 +173,7 @@ if run_button:
 
             # Normalize bubble sizes
             max_vol = df_comb_sorted["abs_volume"].max()
-            df_comb_sorted["bubble_size"] = df_comb_sorted["abs_volume"].apply(lambda v: 20 + (v / max_vol) * 80)
+            df_comb_sorted["bubble_size"] = df_comb_sorted["abs_volume"].apply(lambda v: 25 + (v / max_vol) * 80)
 
             # Random positions closer together for tighter packing
             np.random.seed(0)
@@ -192,9 +192,9 @@ if run_button:
                         size=row["bubble_size"],
                         color=row["color"],
                         opacity=0.8,
-                        line=dict(width=2, color="white")
+                        line=dict(width=2, color="blue")
                     ),
-                    textfont=dict(color="white", size=12, family="Arial"),
+                    textfont=dict(color="black", size=12, family="Arial"),
                     hoverinfo="text"
                 ))
 
@@ -202,7 +202,7 @@ if run_button:
                 title="🫧 Net Volume Bubble Cloud (Positive vs Negative)",
                 xaxis=dict(visible=False),
                 yaxis=dict(visible=False),
-                height=700,  # smaller frame
+                height=500,  # smaller frame
                 showlegend=False,
                 margin=dict(l=20, r=20, t=50, b=20),
                 plot_bgcolor="rgba(0,0,0,0)"
