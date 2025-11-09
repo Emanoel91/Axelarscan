@@ -166,7 +166,8 @@ if run_button:
                                   showlegend=False, height=900)
             fig_net.update_traces(textposition="outside")
 
-            # 4️⃣ CryptoBubbles-style Bubble Cloud (Improved)
+            # ---------------- 4️⃣ CryptoBubbles-style Bubble Cloud ----------------
+
             # Helper: Format large numbers
             def format_volume(v):
                 abs_v = abs(v)
@@ -178,20 +179,47 @@ if run_button:
                     return f"{v/1_000:.2f}k"
                 else:
                     return f"{v:.2f}"
-                    
-            df_comb_sorted["abs_volume"] = df_comb_sorted["net_volume"].abs()
-            df_comb_sorted["color"] = df_comb_sorted["net_volume"].apply(lambda x: "green" if x >= 0 else "red")
-            df_comb_sorted["label"] = df_comb_sorted.apply(lambda r: f"{r['chain']}\n{format_volume(r['net_volume'])}", axis=1)
 
             # Normalize bubble sizes
+            df_comb_sorted["abs_volume"] = df_comb_sorted["net_volume"].abs()
             max_vol = df_comb_sorted["abs_volume"].max()
             df_comb_sorted["bubble_size"] = df_comb_sorted["abs_volume"].apply(lambda v: 25 + (v / max_vol) * 80)
+            df_comb_sorted["color"] = df_comb_sorted["net_volume"].apply(lambda x: "green" if x >= 0 else "red")
+            df_comb_sorted["label"] = df_comb_sorted.apply(
+                lambda r: f"{r['chain']}\n{format_volume(r['net_volume'])}", axis=1
+            )
 
-            # Random positions closer together for tighter packing
+            # Initial random positions
             np.random.seed(0)
             df_comb_sorted["x"] = np.random.rand(len(df_comb_sorted)) * 0.7 + 0.15  # 0.15-0.85
             df_comb_sorted["y"] = np.random.rand(len(df_comb_sorted)) * 0.7 + 0.15
 
+            # Function to avoid bubble overlaps
+            def adjust_positions(df, padding=5):
+                positions = df[["x", "y", "bubble_size"]].copy()
+                for i in range(len(positions)):
+                    xi, yi, ri = positions.loc[i]
+                    for j in range(i + 1, len(positions)):
+                        xj, yj, rj = positions.loc[j]
+                        dx = xj - xi
+                        dy = yj - yi
+                        dist = np.sqrt(dx**2 + dy**2)
+                        min_dist = (ri + rj + padding) / 100  # Normalize padding
+                        if dist < min_dist and dist != 0:
+                            angle = np.arctan2(dy, dx)
+                            move = (min_dist - dist) / 2
+                            positions.loc[i, "x"] -= np.cos(angle) * move
+                            positions.loc[i, "y"] -= np.sin(angle) * move
+                            positions.loc[j, "x"] += np.cos(angle) * move
+                            positions.loc[j, "y"] += np.sin(angle) * move
+                return positions[["x", "y"]]
+
+            # Apply adjustment
+            adjusted_pos = adjust_positions(df_comb_sorted)
+            df_comb_sorted["x"] = adjusted_pos["x"]
+            df_comb_sorted["y"] = adjusted_pos["y"]
+
+            # Create bubble chart
             fig_bubble = go.Figure()
             for _, row in df_comb_sorted.iterrows():
                 fig_bubble.add_trace(go.Scatter(
@@ -214,7 +242,7 @@ if run_button:
                 title="🫧 Net Volume Bubble Cloud (Positive vs Negative)",
                 xaxis=dict(visible=False),
                 yaxis=dict(visible=False),
-                height=500,  # smaller frame
+                height=500,
                 showlegend=False,
                 margin=dict(l=20, r=20, t=50, b=20),
                 plot_bgcolor="rgba(0,0,0,0)"
