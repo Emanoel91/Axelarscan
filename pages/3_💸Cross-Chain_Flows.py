@@ -162,8 +162,17 @@ def bubble_size_category(v):
     elif abs_v < 40_000_000: return 98
     elif abs_v < 45_000_000: return 99
     elif abs_v < 50_000_000: return 100
-    elif abs_v < 100_000_000: return 110
-    else: return 120
+    elif abs_v < 60_000_000: return 110
+    elif abs_v < 70_000_000: return 120
+    elif abs_v < 80_000_000: return 130
+    elif abs_v < 90_000_000: return 135
+    elif abs_v < 100_000_000: return 140
+    elif abs_v < 110_000_000: return 145
+    elif abs_v < 120_000_000: return 150
+    elif abs_v < 130_000_000: return 155
+    elif abs_v < 140_000_000: return 160
+    elif abs_v < 150_000_000: return 165
+    else: return 170
 
 # ------------------- Main Logic ---------------------------------------------
 if run_button:
