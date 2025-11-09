@@ -166,13 +166,17 @@ if run_button:
                                   showlegend=False, height=900)
             fig_net.update_traces(textposition="outside")
 
-            # 4️⃣ Bubble Cloud Chart (No axes)
+            # 4️⃣ CryptoBubbles-style Bubble Cloud
             df_comb_sorted["abs_volume"] = df_comb_sorted["net_volume"].abs()
             df_comb_sorted["color"] = df_comb_sorted["net_volume"].apply(lambda x: "green" if x >= 0 else "red")
             df_comb_sorted["label"] = df_comb_sorted.apply(lambda r: f"{r['chain']} ({r['net_volume']:.2f})", axis=1)
 
-            # Random coordinates for a scattered "bubble cloud" look
-            np.random.seed(42)
+            # Normalize bubble sizes
+            max_vol = df_comb_sorted["abs_volume"].max()
+            df_comb_sorted["bubble_size"] = df_comb_sorted["abs_volume"].apply(lambda v: 20 + (v / max_vol) * 80)
+
+            # Use random positions initially for packing
+            np.random.seed(0)
             df_comb_sorted["x"] = np.random.rand(len(df_comb_sorted))
             df_comb_sorted["y"] = np.random.rand(len(df_comb_sorted))
 
@@ -185,9 +189,9 @@ if run_button:
                     text=[row["label"]],
                     textposition="middle center",
                     marker=dict(
-                        size=max(10, np.sqrt(row["abs_volume"]) / 1000),  # scale bubble size
+                        size=row["bubble_size"],
                         color=row["color"],
-                        opacity=0.7,
+                        opacity=0.8,
                         line=dict(width=1, color="white")
                     ),
                     hoverinfo="text"
@@ -198,13 +202,15 @@ if run_button:
                 xaxis=dict(visible=False),
                 yaxis=dict(visible=False),
                 height=900,
-                showlegend=False
+                showlegend=False,
+                margin=dict(l=0, r=0, t=40, b=0)
             )
 
-            # Display all charts
+            # Display charts
             st.plotly_chart(fig_in, use_container_width=True)
             st.plotly_chart(fig_out, use_container_width=True)
             st.plotly_chart(fig_net, use_container_width=True)
             st.plotly_chart(fig_bubble, use_container_width=True)
+
 else:
     st.info("👆 Select a date range and click **Fetch Data** to load charts.")
