@@ -188,9 +188,25 @@ if run_button:
             df_comb_sorted["bubble_size"] = df_comb_sorted["abs_volume"].apply(lambda v: 25 + (v / max_vol) * 80)
 
             # Random positions closer together for tighter packing
-            np.random.seed(0)
-            df_comb_sorted["x"] = np.random.rand(len(df_comb_sorted)) * 0.7 + 0.15  # 0.15-0.85
-            df_comb_sorted["y"] = np.random.rand(len(df_comb_sorted)) * 0.7 + 0.15
+            def generate_non_overlapping_positions(sizes, width=1.0, height=1.0, padding=0.01, max_iter=5000):
+                """Generate random (x, y) positions for bubbles without overlap."""
+                positions = []
+                for size in sizes:
+                    radius = size / 2 / max(sizes) * 0.1  # normalize radius to plot scale
+                    for _ in range(max_iter):
+                        x = np.random.rand() * (width - 2*radius) + radius
+                        y = np.random.rand() * (height - 2*radius) + radius
+                        if all(np.sqrt((x - px)**2 + (y - py)**2) >= (radius + pradius + padding)
+                               for (px, py, pradius) in positions):
+                            positions.append((x, y, radius))
+                            break
+                    else:
+                        # اگر نتوانستیم جای مناسب پیدا کنیم، قبول کنیم با کمی فاصله کم‌تر
+                        positions.append((x, y, radius))
+                xs, ys = zip(*[(p[0], p[1]) for p in positions])
+                return np.array(xs), np.array(ys)
+            df_comb_sorted["x"], df_comb_sorted["y"] = generate_non_overlapping_positions(df_comb_sorted["bubble_size"].values)
+
 
             fig_bubble = go.Figure()
             for _, row in df_comb_sorted.iterrows():
