@@ -141,9 +141,26 @@ def bubble_size_category(v):
     elif abs_v < 1_000: return 40
     elif abs_v < 10_000: return 50
     elif abs_v < 100_000: return 60
+    elif abs_v < 200_000: return 62
+    elif abs_v < 400_000: return 64
+    elif abs_v < 600_000: return 66
+    elif abs_v < 800_000: return 68
     elif abs_v < 1_000_000: return 70
+    elif abs_v < 2_000_000: return 72
+    elif abs_v < 4_000_000: return 74
+    elif abs_v < 6_000_000: return 76
+    elif abs_v < 8_000_000: return 78
     elif abs_v < 10_000_000: return 80
+    elif abs_v < 12_000_000: return 82
+    elif abs_v < 14_000_000: return 84
+    elif abs_v < 16_000_000: return 86
+    elif abs_v < 18_000_000: return 88
     elif abs_v < 20_000_000: return 90
+    elif abs_v < 25_000_000: return 92
+    elif abs_v < 30_000_000: return 94
+    elif abs_v < 35_000_000: return 96
+    elif abs_v < 40_000_000: return 98
+    elif abs_v < 45_000_000: return 99
     elif abs_v < 50_000_000: return 100
     elif abs_v < 100_000_000: return 110
     else: return 120
