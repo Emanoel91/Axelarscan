@@ -73,6 +73,7 @@ st.sidebar.markdown(
 
 # ------------------------------- Helper: Fetch API --------------------------
 def fetch_gmp_data(from_date, to_date):
+    """Fetch data from Axelar GMPStatsByChains API within a given time range."""
     from_ts = int(datetime.combine(from_date, dtime.min).timestamp())
     to_ts = int(datetime.combine(to_date, dtime.max).timestamp())
     url = f"https://api.axelarscan.io/gmp/GMPStatsByChains?fromTime={from_ts}&toTime={to_ts}"
@@ -87,6 +88,7 @@ def fetch_gmp_data(from_date, to_date):
 
 # ------------------------------- Helper: Process Data -----------------------
 def compute_volumes(source_chains):
+    """Compute incoming, outgoing, and net volumes for each chain."""
     outgoing = {}
     incoming = {}
 
@@ -104,6 +106,7 @@ def compute_volumes(source_chains):
     df_out = pd.DataFrame(list(outgoing.items()), columns=["chain", "volume"])
     df_combined = pd.merge(df_in, df_out, on="chain", how="outer", suffixes=("_in", "_out")).fillna(0)
 
+    # Remove zero-volume chains
     df_in = df_in[df_in["volume"] > 0]
     df_out = df_out[df_out["volume"] > 0]
     df_combined = df_combined[(df_combined["volume_in"] > 0) | (df_combined["volume_out"] > 0)]
@@ -121,7 +124,7 @@ if run_button:
         else:
             df_in, df_out, df_comb = compute_volumes(data)
 
-            # ---------------- Incoming Volume Chart ----------------
+            # 1️⃣ Incoming Volume Chart
             df_in_sorted = df_in.sort_values("volume", ascending=True)
             fig_in = px.bar(
                 df_in_sorted,
@@ -134,7 +137,7 @@ if run_button:
                                  showlegend=False, height=900)
             fig_in.update_traces(textposition="outside")
 
-            # ---------------- Outgoing Volume Chart ----------------
+            # 2️⃣ Outgoing Volume Chart
             df_out_sorted = df_out.sort_values("volume", ascending=True)
             fig_out = px.bar(
                 df_out_sorted,
@@ -147,7 +150,7 @@ if run_button:
                                   showlegend=False, height=900)
             fig_out.update_traces(textposition="outside")
 
-            # ---------------- Net Volume Chart ----------------
+            # 3️⃣ Net Volume Chart
             df_comb_sorted = df_comb.sort_values("net_volume", ascending=True)
             df_comb_sorted["color"] = df_comb_sorted["net_volume"].apply(lambda x: "red" if x < 0 else "green")
 
@@ -163,9 +166,8 @@ if run_button:
                                   showlegend=False, height=900)
             fig_net.update_traces(textposition="outside")
 
-            # ---------------- Bubble Chart ----------------
-
-            # Helper: Format numbers
+            # 4️⃣ CryptoBubbles-style Bubble Cloud (Improved)
+            # Helper: Format large numbers
             def format_volume(v):
                 abs_v = abs(v)
                 if abs_v >= 1_000_000_000:
@@ -176,45 +178,20 @@ if run_button:
                     return f"{v/1_000:.2f}k"
                 else:
                     return f"{v:.2f}"
-
+                    
             df_comb_sorted["abs_volume"] = df_comb_sorted["net_volume"].abs()
+            df_comb_sorted["color"] = df_comb_sorted["net_volume"].apply(lambda x: "green" if x >= 0 else "red")
+            df_comb_sorted["label"] = df_comb_sorted.apply(lambda r: f"{r['chain']}\n{format_volume(r['net_volume'])}", axis=1)
+
+            # Normalize bubble sizes
             max_vol = df_comb_sorted["abs_volume"].max()
             df_comb_sorted["bubble_size"] = df_comb_sorted["abs_volume"].apply(lambda v: 25 + (v / max_vol) * 80)
-            df_comb_sorted["color"] = df_comb_sorted["net_volume"].apply(lambda x: "green" if x >= 0 else "red")
-            df_comb_sorted["label"] = df_comb_sorted.apply(
-                lambda r: f"{r['chain']}\n{format_volume(r['net_volume'])}", axis=1
-            )
 
-            # Initial random positions
+            # Random positions closer together for tighter packing
             np.random.seed(0)
-            df_comb_sorted["x"] = np.random.rand(len(df_comb_sorted)) * 0.7 + 0.15
+            df_comb_sorted["x"] = np.random.rand(len(df_comb_sorted)) * 0.7 + 0.15  # 0.15-0.85
             df_comb_sorted["y"] = np.random.rand(len(df_comb_sorted)) * 0.7 + 0.15
 
-            # Adjust positions to avoid overlap
-            def adjust_positions(df, padding=5):
-                positions = df[["x", "y", "bubble_size"]].copy()
-                for i in range(len(positions)):
-                    xi, yi, ri = positions.iloc[i]
-                    for j in range(i + 1, len(positions)):
-                        xj, yj, rj = positions.iloc[j]
-                        dx = xj - xi
-                        dy = yj - yi
-                        dist = np.sqrt(dx**2 + dy**2)
-                        min_dist = (ri + rj + padding) / 100
-                        if dist < min_dist and dist != 0:
-                            angle = np.arctan2(dy, dx)
-                            move = (min_dist - dist) / 2
-                            positions.iloc[i, positions.columns.get_loc("x")] -= np.cos(angle) * move
-                            positions.iloc[i, positions.columns.get_loc("y")] -= np.sin(angle) * move
-                            positions.iloc[j, positions.columns.get_loc("x")] += np.cos(angle) * move
-                            positions.iloc[j, positions.columns.get_loc("y")] += np.sin(angle) * move
-                return positions[["x", "y"]]
-
-            adjusted_pos = adjust_positions(df_comb_sorted)
-            df_comb_sorted["x"] = adjusted_pos["x"]
-            df_comb_sorted["y"] = adjusted_pos["y"]
-
-            # Create bubble chart
             fig_bubble = go.Figure()
             for _, row in df_comb_sorted.iterrows():
                 fig_bubble.add_trace(go.Scatter(
@@ -237,13 +214,13 @@ if run_button:
                 title="🫧 Net Volume Bubble Cloud (Positive vs Negative)",
                 xaxis=dict(visible=False),
                 yaxis=dict(visible=False),
-                height=500,
+                height=500,  # smaller frame
                 showlegend=False,
                 margin=dict(l=20, r=20, t=50, b=20),
                 plot_bgcolor="rgba(0,0,0,0)"
             )
 
-            # Display all charts
+            # Display charts
             st.plotly_chart(fig_in, use_container_width=True)
             st.plotly_chart(fig_out, use_container_width=True)
             st.plotly_chart(fig_net, use_container_width=True)
