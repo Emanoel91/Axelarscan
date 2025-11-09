@@ -1,9 +1,10 @@
 import streamlit as st
 import pandas as pd
 import requests
+import plotly.express as px
 import plotly.graph_objects as go
-import numpy as np
 from datetime import datetime, time as dtime
+import numpy as np
 
 # ------------------------------- Page config --------------------------------
 st.set_page_config(
@@ -53,6 +54,8 @@ def compute_volumes(source_chains):
     df_in = pd.DataFrame(list(incoming.items()), columns=["chain","volume"])
     df_out = pd.DataFrame(list(outgoing.items()), columns=["chain","volume"])
     df_comb = pd.merge(df_in, df_out, on="chain", how="outer", suffixes=("_in","_out")).fillna(0)
+    df_in = df_in[df_in["volume"]>0]
+    df_out = df_out[df_out["volume"]>0]
     df_comb = df_comb[(df_comb["volume_in"]>0)|(df_comb["volume_out"]>0)]
     df_comb["net_volume"] = df_comb["volume_in"] - df_comb["volume_out"]
     return df_in, df_out, df_comb
@@ -86,27 +89,81 @@ def pack_bubbles(sizes, iterations=3000):
         positions=np.clip(positions,0,1)
     return positions[:,0], positions[:,1]
 
+# ------------------- Bubble Size by Category -------------------------------
+def bubble_size_category(v):
+    abs_v = abs(v)
+    if abs_v < 10: return 10
+    elif abs_v < 100: return 20
+    elif abs_v < 1_000: return 30
+    elif abs_v < 10_000: return 40
+    elif abs_v < 100_000: return 50
+    elif abs_v < 1_000_000: return 60
+    elif abs_v < 10_000_000: return 70
+    elif abs_v < 20_000_000: return 80
+    elif abs_v < 50_000_000: return 90
+    elif abs_v < 100_000_000: return 100
+    else: return 110
+
 # ------------------- Main Logic ---------------------------------------------
 if run_button:
-    with st.spinner("Fetching data..."):
+    with st.spinner("Fetching data and building charts..."):
         data = fetch_gmp_data(from_date,to_date)
         if not data:
             st.warning("No data returned for selected range.")
         else:
             df_in, df_out, df_comb = compute_volumes(data)
 
-            # ------------------- Bubble Chart -------------------
-            df_comb = df_comb.sort_values("net_volume",ascending=True)
-            df_comb["abs_volume"] = df_comb["net_volume"].abs()
-            max_vol = df_comb["abs_volume"].max()
-            # Logarithmic scaling
-            df_comb["bubble_size"] = df_comb["abs_volume"].apply(lambda v: 20+100*np.log1p(v)/np.log1p(max_vol))
-            df_comb["color"] = df_comb["net_volume"].apply(lambda x: "green" if x>=0 else "red")
-            df_comb["label"] = df_comb.apply(lambda r: f"<b>{r['chain']}</b>\n{format_volume(r['net_volume'])}", axis=1)
-            df_comb["x"], df_comb["y"] = pack_bubbles(df_comb["bubble_size"].values)
+            # ------------------- 1️⃣ Incoming Volume -------------------
+            df_in_sorted = df_in.sort_values("volume",ascending=True)
+            fig_in = px.bar(
+                df_in_sorted,
+                x="volume", y="chain", orientation="h",
+                title="📈 Total Incoming Volume (Destination Chains)",
+                color="chain", color_discrete_sequence=px.colors.qualitative.Bold,
+                text=df_in_sorted["volume"].round(2)
+            )
+            fig_in.update_layout(xaxis_title="Volume (USD)", yaxis_title="Destination Chain",
+                                 showlegend=False, height=600)
+            fig_in.update_traces(textposition="outside")
+            st.plotly_chart(fig_in,use_container_width=True)
+
+            # ------------------- 2️⃣ Outgoing Volume -------------------
+            df_out_sorted = df_out.sort_values("volume",ascending=True)
+            fig_out = px.bar(
+                df_out_sorted,
+                x="volume", y="chain", orientation="h",
+                title="📉 Total Outgoing Volume (Source Chains)",
+                color="chain", color_discrete_sequence=px.colors.qualitative.Safe,
+                text=df_out_sorted["volume"].round(2)
+            )
+            fig_out.update_layout(xaxis_title="Volume (USD)", yaxis_title="Source Chain",
+                                  showlegend=False, height=600)
+            fig_out.update_traces(textposition="outside")
+            st.plotly_chart(fig_out,use_container_width=True)
+
+            # ------------------- 3️⃣ Net Volume -------------------
+            df_comb_sorted = df_comb.sort_values("net_volume",ascending=True)
+            df_comb_sorted["color"] = df_comb_sorted["net_volume"].apply(lambda x: "green" if x>=0 else "red")
+            fig_net = px.bar(
+                df_comb_sorted,
+                x="net_volume", y="chain", orientation="h",
+                title="⚖️ Net Volume (Incoming - Outgoing)",
+                color="color",
+                color_discrete_map={"green":"green","red":"red"},
+                text=df_comb_sorted["net_volume"].round(2)
+            )
+            fig_net.update_layout(xaxis_title="Net Volume (USD)", yaxis_title="Chain",
+                                  showlegend=False, height=600)
+            fig_net.update_traces(textposition="outside")
+            st.plotly_chart(fig_net,use_container_width=True)
+
+            # ------------------- 4️⃣ Bubble Chart -------------------
+            df_comb_sorted["bubble_size"] = df_comb_sorted["net_volume"].apply(bubble_size_category)
+            df_comb_sorted["label"] = df_comb_sorted.apply(lambda r: f"<b>{r['chain']}</b>\n{format_volume(r['net_volume'])}",axis=1)
+            df_comb_sorted["x"], df_comb_sorted["y"] = pack_bubbles(df_comb_sorted["bubble_size"].values)
 
             fig_bubble = go.Figure()
-            for _, row in df_comb.iterrows():
+            for _, row in df_comb_sorted.iterrows():
                 fig_bubble.add_trace(go.Scatter(
                     x=[row["x"]], y=[row["y"]],
                     mode="markers+text",
@@ -114,14 +171,13 @@ if run_button:
                     textposition="middle center",
                     marker=dict(
                         size=row["bubble_size"],
-                        color=row["color"],
+                        color="green" if row["net_volume"]>=0 else "red",
                         opacity=0.7,
-                        line=dict(width=2, color="#333")
+                        line=dict(width=2,color="#333")
                     ),
                     textfont=dict(color="white", size=12, family="Arial"),
                     hoverinfo="text"
                 ))
-
             fig_bubble.update_layout(
                 title="🫧 Net Volume Bubble Cloud",
                 xaxis=dict(visible=False),
