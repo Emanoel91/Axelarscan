@@ -136,17 +136,17 @@ def pack_bubbles(sizes, iterations=3000):
 # ------------------- Bubble Size by Category -------------------------------
 def bubble_size_category(v):
     abs_v = abs(v)
-    if abs_v < 10: return 10
-    elif abs_v < 100: return 20
-    elif abs_v < 1_000: return 30
-    elif abs_v < 10_000: return 40
-    elif abs_v < 100_000: return 50
-    elif abs_v < 1_000_000: return 60
-    elif abs_v < 10_000_000: return 70
-    elif abs_v < 20_000_000: return 80
-    elif abs_v < 50_000_000: return 90
-    elif abs_v < 100_000_000: return 100
-    else: return 110
+    if abs_v < 10: return 20
+    elif abs_v < 100: return 30
+    elif abs_v < 1_000: return 40
+    elif abs_v < 10_000: return 50
+    elif abs_v < 100_000: return 60
+    elif abs_v < 1_000_000: return 70
+    elif abs_v < 10_000_000: return 80
+    elif abs_v < 20_000_000: return 90
+    elif abs_v < 50_000_000: return 100
+    elif abs_v < 100_000_000: return 110
+    else: return 120
 
 # ------------------- Main Logic ---------------------------------------------
 if run_button:
@@ -159,12 +159,13 @@ if run_button:
 
             # ------------------- 1️⃣ Incoming Volume -------------------
             df_in_sorted = df_in.sort_values("volume",ascending=True)
+            df_in_sorted["formatted_volume"] = df_in_sorted["volume"].apply(format_volume)
             fig_in = px.bar(
                 df_in_sorted,
                 x="volume", y="chain", orientation="h",
                 title="📈 Total Incoming Volume (Destination Chains)",
                 color="chain", color_discrete_sequence=px.colors.qualitative.Bold,
-                text=df_in_sorted["volume"].round(2)
+                text="formatted_volume"
             )
             fig_in.update_layout(xaxis_title="Volume (USD)", yaxis_title="Destination Chain",
                                  showlegend=False, height=600)
@@ -173,12 +174,13 @@ if run_button:
 
             # ------------------- 2️⃣ Outgoing Volume -------------------
             df_out_sorted = df_out.sort_values("volume",ascending=True)
+            df_out_sorted["formatted_volume"] = df_out_sorted["volume"].apply(format_volume)
             fig_out = px.bar(
                 df_out_sorted,
                 x="volume", y="chain", orientation="h",
                 title="📉 Total Outgoing Volume (Source Chains)",
                 color="chain", color_discrete_sequence=px.colors.qualitative.Safe,
-                text=df_out_sorted["volume"].round(2)
+                text="formatted_volume"
             )
             fig_out.update_layout(xaxis_title="Volume (USD)", yaxis_title="Source Chain",
                                   showlegend=False, height=600)
@@ -188,13 +190,14 @@ if run_button:
             # ------------------- 3️⃣ Net Volume -------------------
             df_comb_sorted = df_comb.sort_values("net_volume",ascending=True)
             df_comb_sorted["color"] = df_comb_sorted["net_volume"].apply(lambda x: "green" if x>=0 else "red")
+            df_comb_sorted["formatted_volume"] = df_comb_sorted["net_volume"].apply(format_volume)
             fig_net = px.bar(
                 df_comb_sorted,
                 x="net_volume", y="chain", orientation="h",
                 title="⚖️ Net Volume (Incoming - Outgoing)",
                 color="color",
                 color_discrete_map={"green":"green","red":"red"},
-                text=df_comb_sorted["net_volume"].round(2)
+                text="formatted_volume"
             )
             fig_net.update_layout(xaxis_title="Net Volume (USD)", yaxis_title="Chain",
                                   showlegend=False, height=600)
@@ -203,7 +206,7 @@ if run_button:
 
             # ------------------- 4️⃣ Bubble Chart -------------------
             df_comb_sorted["bubble_size"] = df_comb_sorted["net_volume"].apply(bubble_size_category)
-            df_comb_sorted["label"] = df_comb_sorted.apply(lambda r: f"<b>{r['chain']}</b>\n{format_volume(r['net_volume'])}",axis=1)
+            df_comb_sorted["label"] = df_comb_sorted.apply(lambda r: f"<b>{r['chain']}</b><br>{format_volume(r['net_volume'])}",axis=1)
             df_comb_sorted["x"], df_comb_sorted["y"] = pack_bubbles(df_comb_sorted["bubble_size"].values)
 
             fig_bubble = go.Figure()
