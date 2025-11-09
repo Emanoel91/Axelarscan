@@ -166,47 +166,71 @@ if run_button:
                                   showlegend=False, height=900)
             fig_net.update_traces(textposition="outside")
 
-            # 4️⃣ CryptoBubbles-style Bubble Cloud (Improved)
-            df_comb_sorted["abs_volume"] = df_comb_sorted["net_volume"].abs()
-            df_comb_sorted["color"] = df_comb_sorted["net_volume"].apply(lambda x: "green" if x >= 0 else "red")
-            df_comb_sorted["label"] = df_comb_sorted.apply(lambda r: f"{r['chain']}\n{r['net_volume']:.2f}", axis=1)
+# Calculate bubble sizes
+df_comb_sorted["abs_volume"] = df_comb_sorted["net_volume"].abs()
+df_comb_sorted["color"] = df_comb_sorted["net_volume"].apply(lambda x: "green" if x >= 0 else "red")
+df_comb_sorted["label"] = df_comb_sorted.apply(lambda r: f"{r['chain']}\n{r['net_volume']:.2f}", axis=1)
 
-            # Normalize bubble sizes
-            max_vol = df_comb_sorted["abs_volume"].max()
-            df_comb_sorted["bubble_size"] = df_comb_sorted["abs_volume"].apply(lambda v: 35 + (v / max_vol) * 80)
+max_vol = df_comb_sorted["abs_volume"].max()
+df_comb_sorted["bubble_size"] = df_comb_sorted["abs_volume"].apply(lambda v: 35 + (v / max_vol) * 80)
 
-            # Random positions closer together for tighter packing
-            np.random.seed(0)
-            df_comb_sorted["x"] = np.random.rand(len(df_comb_sorted)) * 0.7 + 0.15  # 0.15-0.85
-            df_comb_sorted["y"] = np.random.rand(len(df_comb_sorted)) * 0.7 + 0.15
+# Initial random positions
+np.random.seed(0)
+positions = np.random.rand(len(df_comb_sorted), 2) * 0.7 + 0.15  # 0.15-0.85
 
-            fig_bubble = go.Figure()
-            for _, row in df_comb_sorted.iterrows():
-                fig_bubble.add_trace(go.Scatter(
-                    x=[row["x"]],
-                    y=[row["y"]],
-                    mode="markers+text",
-                    text=[row["label"]],
-                    textposition="middle center",
-                    marker=dict(
-                        size=row["bubble_size"],
-                        color=row["color"],
-                        opacity=0.8,
-                        line=dict(width=2, color="white")
-                    ),
-                    textfont=dict(color="black", size=12, family="Arial"),
-                    hoverinfo="text"
-                ))
+# Function to resolve collisions between bubbles
+def resolve_collisions(positions, sizes, padding=0.02, iterations=100):
+    for _ in range(iterations):
+        for i in range(len(positions)):
+            for j in range(i+1, len(positions)):
+                dx = positions[j,0] - positions[i,0]
+                dy = positions[j,1] - positions[i,1]
+                dist = np.sqrt(dx**2 + dy**2)
+                min_dist = (sizes[i] + sizes[j])/2/400 + padding  # scale factor for plotly coordinates
+                if dist < min_dist:
+                    angle = np.arctan2(dy, dx)
+                    move = (min_dist - dist)/2
+                    positions[i,0] -= move * np.cos(angle)
+                    positions[i,1] -= move * np.sin(angle)
+                    positions[j,0] += move * np.cos(angle)
+                    positions[j,1] += move * np.sin(angle)
+    return positions
 
-            fig_bubble.update_layout(
-                title="Net Volume Bubble Cloud",
-                xaxis=dict(visible=False),
-                yaxis=dict(visible=False),
-                height=400,  # smaller frame
-                showlegend=False,
-                margin=dict(l=20, r=20, t=50, b=20),
-                plot_bgcolor="rgba(0,0,0,0)"
-            )
+# Apply collision resolution
+sizes = df_comb_sorted["bubble_size"].values
+positions = resolve_collisions(positions, sizes)
+df_comb_sorted["x"], df_comb_sorted["y"] = positions[:,0], positions[:,1]
+
+# Plot the bubble chart
+fig_bubble = go.Figure()
+for _, row in df_comb_sorted.iterrows():
+    fig_bubble.add_trace(go.Scatter(
+        x=[row["x"]],
+        y=[row["y"]],
+        mode="markers+text",
+        text=[row["label"]],
+        textposition="middle center",
+        marker=dict(
+            size=row["bubble_size"],
+            color=row["color"],
+            opacity=0.8,
+            line=dict(width=2, color="white")
+        ),
+        textfont=dict(color="black", size=12, family="Arial"),
+        hoverinfo="text"
+    ))
+
+# Layout adjustments
+fig_bubble.update_layout(
+    title="Net Volume Bubble Cloud",
+    xaxis=dict(visible=False),
+    yaxis=dict(visible=False),
+    height=400,
+    showlegend=False,
+    margin=dict(l=20, r=20, t=50, b=20),
+    plot_bgcolor="rgba(0,0,0,0)"
+)
+fig_bubble.show()
 
             # Display charts
             st.plotly_chart(fig_in, use_container_width=True)
