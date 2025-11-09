@@ -161,7 +161,7 @@ if run_button:
                                   showlegend=False, height=600)
             fig_net.update_traces(textposition="outside")
 
-            # ------------------- Bubble Chart (Improved Scaling) -------------------
+            # ------------------- Bubble Chart (Packing + Bold) -------------------
             def format_volume(v):
                 abs_v = abs(v)
                 if abs_v >= 1_000_000_000:
@@ -175,22 +175,39 @@ if run_button:
 
             df_comb_sorted["abs_volume"] = df_comb_sorted["net_volume"].abs()
             df_comb_sorted["color"] = df_comb_sorted["net_volume"].apply(lambda x: "green" if x >= 0 else "red")
-            df_comb_sorted["label"] = df_comb_sorted.apply(lambda r: f"{r['chain']}\n{format_volume(r['net_volume'])}", axis=1)
+            df_comb_sorted["label"] = df_comb_sorted.apply(lambda r: f"<b>{r['chain']}</b>\n{format_volume(r['net_volume'])}", axis=1)
 
-            # Logarithmic scaling for better visual differentiation
-            df_comb_sorted["bubble_size"] = df_comb_sorted["abs_volume"].apply(lambda v: 20 + 80 * np.log1p(v) / np.log1p(df_comb_sorted["abs_volume"].max()))
+            # Logarithmic scaling for bubble size
+            df_comb_sorted["bubble_size"] = df_comb_sorted["abs_volume"].apply(lambda v: 20 + 100 * np.log1p(v) / np.log1p(df_comb_sorted["abs_volume"].max()))
 
-            # Random positions
-            def generate_positions(sizes, width=1.0, height=1.0, padding=0.01):
-                positions = []
-                for size in sizes:
-                    radius = size / max(sizes) * 0.1
-                    x, y = np.random.rand(), np.random.rand()
-                    positions.append((x, y, radius))
-                xs, ys = zip(*[(p[0], p[1]) for p in positions])
-                return np.array(xs), np.array(ys)
+            # Simple force-directed packing
+            def pack_bubbles(sizes, iterations=200):
+                n = len(sizes)
+                positions = np.random.rand(n, 2)
+                radii = sizes / 2
 
-            df_comb_sorted["x"], df_comb_sorted["y"] = generate_positions(df_comb_sorted["bubble_size"].values)
+                for _ in range(iterations):
+                    for i in range(n):
+                        for j in range(i + 1, n):
+                            dx = positions[j, 0] - positions[i, 0]
+                            dy = positions[j, 1] - positions[i, 1]
+                            dist = np.hypot(dx, dy)
+                            min_dist = radii[i] + radii[j] + 0.01
+                            if dist < min_dist:
+                                # Move away proportionally
+                                if dist == 0:
+                                    dx, dy = np.random.rand(2) - 0.5
+                                    dist = np.hypot(dx, dy)
+                                shift = (min_dist - dist) / 2
+                                positions[i, 0] -= dx/dist*shift
+                                positions[i, 1] -= dy/dist*shift
+                                positions[j, 0] += dx/dist*shift
+                                positions[j, 1] += dy/dist*shift
+                    # Keep inside bounds
+                    positions = np.clip(positions, 0, 1)
+                return positions[:, 0], positions[:, 1]
+
+            df_comb_sorted["x"], df_comb_sorted["y"] = pack_bubbles(df_comb_sorted["bubble_size"].values)
 
             fig_bubble = go.Figure()
             for _, row in df_comb_sorted.iterrows():
@@ -214,7 +231,7 @@ if run_button:
                 title="🫧 Net Volume Bubble Cloud (Positive vs Negative)",
                 xaxis=dict(visible=False),
                 yaxis=dict(visible=False),
-                height=500,
+                height=600,
                 showlegend=False,
                 margin=dict(l=20, r=20, t=50, b=20),
                 plot_bgcolor="rgba(0,0,0,0)"
@@ -226,4 +243,4 @@ if run_button:
             st.plotly_chart(fig_bubble, use_container_width=True)
 
 else:
-    st.info("👆 Select a date range and click **Fetch Data** to load charts.")
+    st.info("👆 Select a date range و click **Fetch Data** to load charts.")
