@@ -69,7 +69,7 @@ st.sidebar.markdown(
     unsafe_allow_html=True
 )
 
-# ------------------------------- Helper -------------------------------------
+# ------------------------------- Helper: Fetch API --------------------------
 def fetch_gmp_data(from_date, to_date):
     """Fetch data from Axelar GMPStatsByChains API within a given time range."""
     from_ts = int(datetime.combine(from_date, dtime.min).timestamp())
@@ -84,7 +84,7 @@ def fetch_gmp_data(from_date, to_date):
         st.error(f"Error fetching data from API: {e}")
         return []
 
-# ------------------------------- Process Data -------------------------------
+# ------------------------------- Helper: Process Data -----------------------
 def compute_volumes(source_chains):
     """Compute incoming, outgoing, and net volumes for each chain."""
     outgoing = {}
@@ -106,10 +106,6 @@ def compute_volumes(source_chains):
     df_combined["net_volume"] = df_combined["volume_in"] - df_combined["volume_out"]
     return df_in, df_out, df_combined
 
-# ------------------------------- Chart Helper -------------------------------
-def add_labels(fig, df, column):
-    fig.update_traces(text=[f"{v:,.2f}" for v in df[column]], textposition="outside")
-
 # ------------------------------- Main Logic ---------------------------------
 if run_button:
     with st.spinner("Fetching data and building charts..."):
@@ -120,38 +116,56 @@ if run_button:
         else:
             df_in, df_out, df_comb = compute_volumes(data)
 
-            # ------------------ Chart 1: Incoming volume ------------------
+            # 1️⃣ Incoming Volume Chart
             fig_in = px.bar(
                 df_in.sort_values("volume", ascending=True),
                 x="volume", y="chain", orientation="h",
                 title="📈 Total Incoming Volume (Destination Chains)",
                 color="chain", color_discrete_sequence=px.colors.qualitative.Bold
             )
-            add_labels(fig_in, df_in.sort_values("volume", ascending=True), "volume")
-            fig_in.update_layout(xaxis_title="Volume (USD)", yaxis_title="Destination Chain", showlegend=False)
+            fig_in.update_traces(text=None)  # remove labels
+            fig_in.update_layout(
+                xaxis_title="Volume (USD)",
+                yaxis_title="Destination Chain",
+                showlegend=False,
+                height=900
+            )
 
-            # ------------------ Chart 2: Outgoing volume ------------------
+            # 2️⃣ Outgoing Volume Chart
             fig_out = px.bar(
                 df_out.sort_values("volume", ascending=True),
                 x="volume", y="chain", orientation="h",
                 title="📉 Total Outgoing Volume (Source Chains)",
                 color="chain", color_discrete_sequence=px.colors.qualitative.Safe
             )
-            add_labels(fig_out, df_out.sort_values("volume", ascending=True), "volume")
-            fig_out.update_layout(xaxis_title="Volume (USD)", yaxis_title="Source Chain", showlegend=False)
+            fig_out.update_traces(text=None)
+            fig_out.update_layout(
+                xaxis_title="Volume (USD)",
+                yaxis_title="Source Chain",
+                showlegend=False,
+                height=900
+            )
 
-            # ------------------ Chart 3: Net volume ------------------
+            # 3️⃣ Net Volume Chart
+            df_comb = df_comb.sort_values("net_volume", ascending=True)
+            df_comb["color"] = df_comb["net_volume"].apply(lambda x: "red" if x < 0 else "green")
+
             fig_net = px.bar(
-                df_comb.sort_values("net_volume", ascending=True),
+                df_comb,
                 x="net_volume", y="chain", orientation="h",
                 title="⚖️ Net Volume (Incoming - Outgoing)",
-                color=df_comb["net_volume"].apply(lambda x: "Positive Net" if x >= 0 else "Negative Net"),
-                color_discrete_map={"Positive Net": "green", "Negative Net": "red"}
+                color="color",
+                color_discrete_map={"green": "green", "red": "red"}
             )
-            add_labels(fig_net, df_comb.sort_values("net_volume", ascending=True), "net_volume")
-            fig_net.update_layout(xaxis_title="Net Volume (USD)", yaxis_title="Chain", showlegend=True)
+            fig_net.update_traces(text=None)
+            fig_net.update_layout(
+                xaxis_title="Net Volume (USD)",
+                yaxis_title="Chain",
+                showlegend=False,
+                height=900
+            )
 
-            # ------------------ Display charts ------------------
+            # Display all charts
             st.plotly_chart(fig_in, use_container_width=True)
             st.plotly_chart(fig_out, use_container_width=True)
             st.plotly_chart(fig_net, use_container_width=True)
