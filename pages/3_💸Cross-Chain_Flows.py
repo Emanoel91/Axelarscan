@@ -185,7 +185,7 @@ if run_button:
 
             # Normalize bubble sizes
             max_vol = df_comb_sorted["abs_volume"].max()
-            df_comb_sorted["bubble_size"] = df_comb_sorted["abs_volume"].apply(lambda v: 35 + (v / max_vol) * 80)
+            df_comb_sorted["bubble_size"] = df_comb_sorted["abs_volume"].apply(lambda v: 35 + (v / max_vol) * 90)
 
             # Random positions closer together for tighter packing
             def generate_non_overlapping_positions(sizes, width=1.0, height=1.0, padding=0.01, max_iter=5000):
