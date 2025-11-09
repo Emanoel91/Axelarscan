@@ -8,6 +8,7 @@ from datetime import datetime, time as dtime
 # -------------------------------- Page config --------------------------------
 st.set_page_config(page_title="Axelarscan", page_icon="https://axelarscan.io/logos/logo.png", layout="wide")
 st.title("📈 Interchain Chart")
+
 # ------------------------------- Chains list ---------------------------------
 chains = [
     "Avalanche","Axelarnet","Ethereum","Fantom","Moonbeam","Polygon","acre","agoric",
@@ -21,8 +22,7 @@ chains = [
     "stride","sui","teritori","terra","terra-2","umee","xion","xpla","xrpl","xrpl-evm","zigchain"
 ]
 
-# ------------------------------- Top filters (not sidebar) -------------------
-# Default dates: 2025-01-01 to 2026-01-01
+# ------------------------------- Top filters ---------------------------------
 default_start = datetime(2025, 1, 1).date()
 default_end = datetime(2026, 1, 1).date()
 
@@ -38,9 +38,9 @@ with filter_col:
     with c4:
         to_date = st.date_input("End Date", value=default_end)
     with c5:
-        timeframe = st.selectbox("Time Frame", ["day", "week", "month"], index=2)  # default = month
+        timeframe = st.selectbox("Time Frame", ["day", "week", "month"], index=2)
 
-# --- Sidebar Footer Slightly Left-Aligned ---------------------------------------------------------------------
+# --- Sidebar Footer Slightly Left-Aligned ------------------------------------
 st.sidebar.markdown(
     """
     <style>
@@ -86,22 +86,13 @@ st.sidebar.markdown(
 
 # ------------------------------- Helper: timestamp parsing -------------------
 def safe_parse_timestamp_series(series):
-    """
-    The input can be a number of seconds, a number of milliseconds, or an ISO-formatted string.
-    The function automatically detects the type and calls pd.to_datetime with the appropriate unit.
-    In case of an error, invalid values are converted to NaT.
-    """
-    # If the input is already a Series of type datetime, return it as is.
     if pd.api.types.is_datetime64_any_dtype(series):
         return pd.to_datetime(series)
 
     nums = pd.to_numeric(series, errors="coerce")
     if nums.notna().any():
         maxv = nums.max()
-        if maxv > 1e11:
-            unit = "ms"
-        else:
-            unit = "s"
+        unit = "ms" if maxv > 1e11 else "s"
         dt = pd.to_datetime(nums, unit=unit, errors="coerce")
         if dt.notna().sum() == 0:
             return pd.to_datetime(series, errors="coerce")
@@ -116,7 +107,6 @@ if source_chain:
 if destination_chain:
     params["destinationChain"] = destination_chain
 
-# convert from_date/to_date to unix (seconds)
 if from_date:
     dt_from = datetime.combine(from_date, dtime.min)
     params["fromTime"] = int(dt_from.timestamp())
@@ -137,30 +127,19 @@ with st.spinner("Fetching data from Axelar API..."):
 
 # ------------------------------- DataFrame ---------------------------------
 df = pd.DataFrame(data)
-
-# If empty, create placeholder columns to avoid later crashes
 if df.empty:
     st.warning("No data returned from API for the selected filters/range.")
     df = pd.DataFrame(columns=["timestamp","num_txs","volume","gmp_num_txs","gmp_volume","transfers_num_txs","transfers_volume"])
 
-# --- IMPORTANT FIX:
-# Overwrite (or create) single 'timestamp' column with parsed datetimes
-# (this avoids creating duplicate column labels)
 df["timestamp"] = safe_parse_timestamp_series(df.get("timestamp", pd.Series(dtype="object")))
-
-# drop rows with invalid timestamp
 df = df[~df["timestamp"].isna()].copy()
 
-# ensure numeric columns exist (if missing from API, fill with zeros)
 for col in ["num_txs","volume","gmp_num_txs","gmp_volume","transfers_num_txs","transfers_volume"]:
     if col not in df.columns:
         df[col] = 0
 
-# Convert numeric columns properly
 num_cols = ["num_txs","volume","gmp_num_txs","gmp_volume","transfers_num_txs","transfers_volume"]
 df[num_cols] = df[num_cols].apply(pd.to_numeric, errors="coerce").fillna(0)
-
-# Sort by timestamp and reset index
 df = df.sort_values("timestamp").reset_index(drop=True)
 
 # ------------------------------- Aggregation by timeframe -------------------
@@ -177,17 +156,11 @@ elif timeframe == "month":
 else:
     df_agg = df.copy()
 
-# If aggregation produced empty df (e.g. after filtering), create zeros to avoid plotting errors
-if df_agg.empty:
-    df_agg = pd.DataFrame({
-        "timestamp": pd.to_datetime([]),
-        "num_txs": pd.Series(dtype="int"),
-        "volume": pd.Series(dtype="float"),
-        "gmp_num_txs": pd.Series(dtype="int"),
-        "gmp_volume": pd.Series(dtype="float"),
-        "transfers_num_txs": pd.Series(dtype="int"),
-        "transfers_volume": pd.Series(dtype="float"),
-    })
+# ------------------- ✅ فیلتر مجدد داده‌ها طبق بازه انتخابی -------------------
+if from_date and to_date:
+    start_dt = datetime.combine(from_date, dtime.min)
+    end_dt = datetime.combine(to_date, dtime.max)
+    df_agg = df_agg[(df_agg["timestamp"] >= start_dt) & (df_agg["timestamp"] <= end_dt)]
 
 # ------------------------------- KPIs --------------------------------------
 st.markdown(
@@ -200,38 +173,41 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# --- KPI Data ---
 total_txs = int(df_agg["num_txs"].sum()) if not df_agg.empty else 0
 total_volume = float(df_agg["volume"].sum()) if not df_agg.empty else 0.0
 
-# --- KPI Layout ---
 col1, col2 = st.columns(2)
 with col1:
     st.metric("🔹 Total Number of Transfers", f"{total_txs:,}")
 with col2:
     st.metric("💵 Total Volume of Transfers (USD)", f"${total_volume:,.2f}")
 
-
-# ------------------------------- Chart 1: Number (bar) & Volume (line) -----
+# ------------------------------- Chart 1: Number & Volume -------------------
 fig1 = go.Figure()
 fig1.add_bar(x=df_agg["timestamp"], y=df_agg["num_txs"], name="Number of Transfers", yaxis="y1", opacity=0.75, marker_color="#178eff")
-fig1.add_trace(go.Scatter(x=df_agg["timestamp"], y=df_agg["volume"], name="Volume of Transfers", yaxis="y2", mode="lines", line=dict(color="#f96819", width=2),
-        marker=dict(color="#006400")))
-fig1.update_layout(title="Volume & Number of Transfers Over Time", xaxis=dict(title="Date"), yaxis=dict(title="Txns count"), yaxis2=dict(title="$USD", overlaying="y", side="right"),
-    legend=dict(orientation="h", yanchor="bottom", y=1.05, xanchor="center", x=0.5), height=480)
+fig1.add_trace(go.Scatter(x=df_agg["timestamp"], y=df_agg["volume"], name="Volume of Transfers", yaxis="y2", mode="lines", line=dict(color="#f96819", width=2)))
+fig1.update_layout(title="Volume & Number of Transfers Over Time",
+                   xaxis=dict(title="Date"),
+                   yaxis=dict(title="Txns count"),
+                   yaxis2=dict(title="$USD", overlaying="y", side="right"),
+                   legend=dict(orientation="h", yanchor="bottom", y=1.05, xanchor="center", x=0.5),
+                   height=480)
 st.plotly_chart(fig1, use_container_width=True)
 
-
-# ------------------------------- Chart 2: Number by service (stacked) ------
-fig2 = px.bar(df_agg, x="timestamp", y=["gmp_num_txs", "transfers_num_txs"], title="Number of Transfers by Service Over Time",
-             labels={"value": "Txns count", "variable": "Service", "timestamp": "Date"}, color_discrete_map={"gmp_num_txs": "#fd9a57", "transfers_num_txs": "#85c2fb"})
+# ------------------------------- Chart 2: Num by Service --------------------
+fig2 = px.bar(df_agg, x="timestamp", y=["gmp_num_txs", "transfers_num_txs"],
+             title="Number of Transfers by Service Over Time",
+             labels={"value": "Txns count", "variable": "Service", "timestamp": "Date"},
+             color_discrete_map={"gmp_num_txs": "#fd9a57", "transfers_num_txs": "#85c2fb"})
 fig2.for_each_trace(lambda t: t.update(name="GMP" if t.name == "gmp_num_txs" else "Token Transfer"))
 fig2.update_layout(barmode="stack", height=450)
 st.plotly_chart(fig2, use_container_width=True)
 
-# ------------------------------- Chart 3: Volume by service (stacked) ------
-fig3 = px.bar(df_agg, x="timestamp", y=["gmp_volume", "transfers_volume"], title="Volume of Transfers by Service Over Time ($USD)",
-    labels={"value": "Volume ($USD)", "variable": "Service", "timestamp": "Date"}, color_discrete_map={"gmp_volume": "#fd9a57", "transfers_volume": "#85c2fb"})
+# ------------------------------- Chart 3: Vol by Service --------------------
+fig3 = px.bar(df_agg, x="timestamp", y=["gmp_volume", "transfers_volume"],
+             title="Volume of Transfers by Service Over Time ($USD)",
+             labels={"value": "Volume ($USD)", "variable": "Service", "timestamp": "Date"},
+             color_discrete_map={"gmp_volume": "#fd9a57", "transfers_volume": "#85c2fb"})
 fig3.for_each_trace(lambda t: t.update(name="GMP" if t.name == "gmp_volume" else "Token Transfer"))
 fig3.update_layout(barmode="stack", height=450)
 st.plotly_chart(fig3, use_container_width=True)
@@ -241,11 +217,14 @@ col_a, col_b = st.columns(2)
 
 with col_a:
     vals_num = [df_agg["gmp_num_txs"].sum(), df_agg["transfers_num_txs"].sum()]
-    fig4 = px.pie(names=["GMP", "Token Transfers"], values=vals_num, hole=0.55, title="Total Number of Transfers by Service", color_discrete_sequence=["#85c2fb", "#fd9a57"])
+    fig4 = px.pie(names=["GMP", "Token Transfers"], values=vals_num, hole=0.55,
+                  title="Total Number of Transfers by Service",
+                  color_discrete_sequence=["#85c2fb", "#fd9a57"])
     st.plotly_chart(fig4, use_container_width=True)
 
 with col_b:
     vals_vol = [df_agg["gmp_volume"].sum(), df_agg["transfers_volume"].sum()]
-    fig5 = px.pie(names=["GMP", "Token Transfer"], values=vals_vol, hole=0.55, title="Total Volume of Transfers by Service ($USD)", color_discrete_sequence=["#85c2fb", "#fd9a57"])
+    fig5 = px.pie(names=["GMP", "Token Transfer"], values=vals_vol, hole=0.55,
+                  title="Total Volume of Transfers by Service ($USD)",
+                  color_discrete_sequence=["#85c2fb", "#fd9a57"])
     st.plotly_chart(fig5, use_container_width=True)
-
