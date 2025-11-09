@@ -175,7 +175,7 @@ if run_button:
                         opacity=0.7,
                         line=dict(width=2,color="#333")
                     ),
-                    textfont=dict(color="white", size=12, family="Arial"),
+                    textfont=dict(color="blue", size=12, family="Arial"),
                     hoverinfo="text"
                 ))
             fig_bubble.update_layout(
