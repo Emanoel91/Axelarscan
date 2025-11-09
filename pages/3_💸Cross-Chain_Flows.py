@@ -194,12 +194,12 @@ if run_button:
                         opacity=0.8,
                         line=dict(width=2, color="white")
                     ),
-                    textfont=dict(color="white", size=12, family="Arial"),
+                    textfont=dict(color="black", size=12, family="Arial"),
                     hoverinfo="text"
                 ))
 
             fig_bubble.update_layout(
-                title="🫧 Net Volume Bubble Cloud (Positive vs Negative)",
+                title="Net Volume Bubble Cloud",
                 xaxis=dict(visible=False),
                 yaxis=dict(visible=False),
                 height=400,  # smaller frame
