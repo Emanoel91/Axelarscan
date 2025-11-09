@@ -136,17 +136,17 @@ def pack_bubbles(sizes, iterations=3000):
 # ------------------- Bubble Size by Category -------------------------------
 def bubble_size_category(v):
     abs_v = abs(v)
-    if abs_v < 10: return 10
-    elif abs_v < 100: return 20
-    elif abs_v < 1_000: return 30
-    elif abs_v < 10_000: return 40
-    elif abs_v < 100_000: return 50
-    elif abs_v < 1_000_000: return 60
-    elif abs_v < 10_000_000: return 70
-    elif abs_v < 20_000_000: return 80
-    elif abs_v < 50_000_000: return 90
-    elif abs_v < 100_000_000: return 100
-    else: return 110
+    if abs_v < 10: return 20
+    elif abs_v < 100: return 30
+    elif abs_v < 1_000: return 40
+    elif abs_v < 10_000: return 50
+    elif abs_v < 100_000: return 60
+    elif abs_v < 1_000_000: return 70
+    elif abs_v < 10_000_000: return 80
+    elif abs_v < 20_000_000: return 90
+    elif abs_v < 50_000_000: return 100
+    elif abs_v < 100_000_000: return 110
+    else: return 120
 
 # ------------------- Main Logic ---------------------------------------------
 if run_button:
@@ -203,11 +203,16 @@ if run_button:
 
             # ------------------- 4️⃣ Bubble Chart -------------------
             df_comb_sorted["bubble_size"] = df_comb_sorted["net_volume"].apply(bubble_size_category)
-            df_comb_sorted["label"] = df_comb_sorted.apply(lambda r: f"<b>{r['chain']}</b>\n{format_volume(r['net_volume'])}",axis=1)
+            # ایجاد متن حباب شامل نام زنجیره و مقدار
+            df_comb_sorted["label"] = df_comb_sorted.apply(
+                lambda r: f"{r['chain']}\n{format_volume(r['net_volume'])}", axis=1
+            )
             df_comb_sorted["x"], df_comb_sorted["y"] = pack_bubbles(df_comb_sorted["bubble_size"].values)
 
             fig_bubble = go.Figure()
             for _, row in df_comb_sorted.iterrows():
+                # اندازه فونت را بر اساس اندازه حباب تعیین می‌کنیم
+                font_size = max(10, row["bubble_size"]//3)
                 fig_bubble.add_trace(go.Scatter(
                     x=[row["x"]], y=[row["y"]],
                     mode="markers+text",
@@ -219,7 +224,7 @@ if run_button:
                         opacity=0.7,
                         line=dict(width=2,color="#333")
                     ),
-                    textfont=dict(color="white", size=12, family="Arial"),
+                    textfont=dict(color="white", size=font_size, family="Arial"),
                     hoverinfo="text"
                 ))
             fig_bubble.update_layout(
