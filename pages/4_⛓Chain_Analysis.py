@@ -181,9 +181,8 @@ fig_tx = go.Figure()
 fig_tx.add_bar(x=tx_df["timestamp"], y=tx_df["num_txs_in"], name="Inbound Tx", marker_color="#74b9ff")
 fig_tx.add_bar(x=tx_df["timestamp"], y=tx_df["num_txs_out"], name="Outbound Tx", marker_color="#ffeaa7")
 fig_tx.add_trace(go.Scatter(x=tx_df["timestamp"], y=tx_df["total"], name="Total", mode="lines", line=dict(color="#6c5ce7", width=2)))
-fig_tx.update_layout(barmode="stack", title=f"🧮 Inbound/Outbound Transaction Counts ({timeframe.capitalize()})", height=480)
+fig_tx.update_layout(barmode="stack", title=f"Inbound/Outbound Transaction Counts per {timeframe.capitalize()}", height=480)
 
-# --- ⬇️ نمایش در یک ردیف
 c1, c2 = st.columns(2)
 with c1:
     st.plotly_chart(fig_vol, use_container_width=True)
@@ -192,14 +191,13 @@ with c2:
 
 # ------------------------------ Chart 3: Cumulative Net Volume -------------
 vol_df["cum_diff"] = vol_df["diff"].cumsum()
-fig_cum = px.line(vol_df, x="timestamp", y="cum_diff", title=f"📈 Cumulative Net Volume ({timeframe.capitalize()})", markers=True)
+fig_cum = px.line(vol_df, x="timestamp", y="cum_diff", title=f"Cumulative Net Volume per {timeframe.capitalize()}", markers=false)
 
 # ------------------------------ Chart 4: Inbound Ratio ---------------------
 tx_df["in_ratio"] = tx_df["num_txs_in"] / tx_df["total"].replace(0,1)
-fig_ratio = px.line(tx_df, x="timestamp", y="in_ratio", title=f"📊 Inbound / Total Transaction Ratio ({timeframe.capitalize()})")
+fig_ratio = px.line(tx_df, x="timestamp", y="in_ratio", title=f"Inbound / Total Transaction Ratio per {timeframe.capitalize()}")
 fig_ratio.update_yaxes(tickformat=".0%")
 
-# --- ⬇️ این دو نمودار در یک ردیف
 c3, c4 = st.columns(2)
 with c3:
     st.plotly_chart(fig_cum, use_container_width=True)
