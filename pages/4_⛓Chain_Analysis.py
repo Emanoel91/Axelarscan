@@ -210,14 +210,14 @@ with col_a:
     fig_d1 = px.pie(names=["Inbound","Outbound"],
                     values=[total_in_vol, total_out_vol],
                     hole=0.55,
-                    title="💵 Volume In vs Out",
+                    title="Total Bridged Volume In vs Out ($USD)",
                     color_discrete_sequence=["#00b894","#d63031"])
     st.plotly_chart(fig_d1, use_container_width=True)
 with col_b:
     fig_d2 = px.pie(names=["Inbound","Outbound"],
                     values=[total_in_txs, total_out_txs],
                     hole=0.55,
-                    title="🔁 Transaction Count In vs Out",
+                    title="Total Transfers Count In vs Out",
                     color_discrete_sequence=["#74b9ff","#ffeaa7"])
     st.plotly_chart(fig_d2, use_container_width=True)
 
@@ -234,7 +234,7 @@ for col in ["GMP","TokenTransfer"]:
 fig_norm_vol = go.Figure()
 fig_norm_vol.add_bar(x=vol_norm["Type"], y=vol_norm["GMP"], name="GMP", marker_color="#fd9a57")
 fig_norm_vol.add_bar(x=vol_norm["Type"], y=vol_norm["TokenTransfer"], name="Token Transfer", marker_color="#85c2fb")
-fig_norm_vol.update_layout(barmode="stack", title="📦 Normalized Volume Share by Service", yaxis_tickformat=".0%", height=450)
+fig_norm_vol.update_layout(barmode="stack", title="Normalized Bridge Volume Share by Service", yaxis_tickformat=".0%", height=450)
 
 tx_norm = pd.DataFrame({
     "Type": ["Inbound","Outbound"],
@@ -248,9 +248,8 @@ for col in ["GMP","TokenTransfer"]:
 fig_norm_tx = go.Figure()
 fig_norm_tx.add_bar(x=tx_norm["Type"], y=tx_norm["GMP"], name="GMP", marker_color="#fd9a57")
 fig_norm_tx.add_bar(x=tx_norm["Type"], y=tx_norm["TokenTransfer"], name="Token Transfer", marker_color="#85c2fb")
-fig_norm_tx.update_layout(barmode="stack", title="📦 Normalized Transaction Count Share by Service", yaxis_tickformat=".0%", height=450)
+fig_norm_tx.update_layout(barmode="stack", title="Normalized Bridge Transaction Count Share by Service", yaxis_tickformat=".0%", height=450)
 
-# --- ⬇️ در یک ردیف
 c5, c6 = st.columns(2)
 with c5:
     st.plotly_chart(fig_norm_vol, use_container_width=True)
