@@ -125,15 +125,9 @@ fig_vol.update_layout(title=f"🔹 Inbound & Outbound Volume per {timeframe.capi
                       yaxis=dict(title="Volume ($)", side="left"),
                       yaxis2=dict(title="Net Volume ($)", overlaying="y", side="right"),
                       barmode="relative",
-                      height=500)
-st.plotly_chart(fig_vol, use_container_width=True)
+                      height=480)
 
-# ------------------------------ Chart 2: Cumulative Net Volume -------------
-vol_df["cum_diff"] = vol_df["diff"].cumsum()
-fig_cum = px.line(vol_df, x="timestamp", y="cum_diff", title=f"📈 Cumulative Net Volume ({timeframe.capitalize()} Aggregation)", markers=True)
-st.plotly_chart(fig_cum, use_container_width=True)
-
-# ------------------------------ Chart 3: Tx Count stacked ------------------
+# ------------------------------ Chart 2: Tx Count stacked ------------------
 tx_df = pd.merge(df_in_agg[["timestamp","num_txs"]],
                  df_out_agg[["timestamp","num_txs"]],
                  on="timestamp", how="outer", suffixes=("_in","_out")).fillna(0)
@@ -143,14 +137,30 @@ fig_tx = go.Figure()
 fig_tx.add_bar(x=tx_df["timestamp"], y=tx_df["num_txs_in"], name="Inbound Tx", marker_color="#74b9ff")
 fig_tx.add_bar(x=tx_df["timestamp"], y=tx_df["num_txs_out"], name="Outbound Tx", marker_color="#ffeaa7")
 fig_tx.add_trace(go.Scatter(x=tx_df["timestamp"], y=tx_df["total"], name="Total", mode="lines", line=dict(color="#6c5ce7", width=2)))
-fig_tx.update_layout(barmode="stack", title=f"🧮 Inbound/Outbound Transaction Counts ({timeframe.capitalize()})")
-st.plotly_chart(fig_tx, use_container_width=True)
+fig_tx.update_layout(barmode="stack", title=f"🧮 Inbound/Outbound Transaction Counts ({timeframe.capitalize()})", height=480)
+
+# --- ⬇️ نمایش در یک ردیف
+c1, c2 = st.columns(2)
+with c1:
+    st.plotly_chart(fig_vol, use_container_width=True)
+with c2:
+    st.plotly_chart(fig_tx, use_container_width=True)
+
+# ------------------------------ Chart 3: Cumulative Net Volume -------------
+vol_df["cum_diff"] = vol_df["diff"].cumsum()
+fig_cum = px.line(vol_df, x="timestamp", y="cum_diff", title=f"📈 Cumulative Net Volume ({timeframe.capitalize()})", markers=True)
 
 # ------------------------------ Chart 4: Inbound Ratio ---------------------
 tx_df["in_ratio"] = tx_df["num_txs_in"] / tx_df["total"].replace(0,1)
 fig_ratio = px.line(tx_df, x="timestamp", y="in_ratio", title=f"📊 Inbound / Total Transaction Ratio ({timeframe.capitalize()})")
 fig_ratio.update_yaxes(tickformat=".0%")
-st.plotly_chart(fig_ratio, use_container_width=True)
+
+# --- ⬇️ این دو نمودار در یک ردیف
+c3, c4 = st.columns(2)
+with c3:
+    st.plotly_chart(fig_cum, use_container_width=True)
+with c4:
+    st.plotly_chart(fig_ratio, use_container_width=True)
 
 # ------------------------------ Chart 5: Donuts ----------------------------
 col_a, col_b = st.columns(2)
@@ -169,7 +179,7 @@ with col_b:
                     color_discrete_sequence=["#74b9ff","#ffeaa7"])
     st.plotly_chart(fig_d2, use_container_width=True)
 
-# ------------------------------ Chart 6: Normalized Stacked Bars -----------
+# ------------------------------ Chart 6 & 7: Normalized Stacked Bars -------
 vol_norm = pd.DataFrame({
     "Type": ["Inbound","Outbound"],
     "GMP": [df_in_agg["gmp_volume"].sum(), df_out_agg["gmp_volume"].sum()],
@@ -182,10 +192,8 @@ for col in ["GMP","TokenTransfer"]:
 fig_norm_vol = go.Figure()
 fig_norm_vol.add_bar(x=vol_norm["Type"], y=vol_norm["GMP"], name="GMP", marker_color="#fd9a57")
 fig_norm_vol.add_bar(x=vol_norm["Type"], y=vol_norm["TokenTransfer"], name="Token Transfer", marker_color="#85c2fb")
-fig_norm_vol.update_layout(barmode="stack", title="📦 Normalized Volume Share by Service", yaxis_tickformat=".0%")
-st.plotly_chart(fig_norm_vol, use_container_width=True)
+fig_norm_vol.update_layout(barmode="stack", title="📦 Normalized Volume Share by Service", yaxis_tickformat=".0%", height=450)
 
-# ------------------------------ Chart 7: Normalized Tx Share ---------------
 tx_norm = pd.DataFrame({
     "Type": ["Inbound","Outbound"],
     "GMP": [df_in_agg["gmp_num_txs"].sum(), df_out_agg["gmp_num_txs"].sum()],
@@ -198,5 +206,11 @@ for col in ["GMP","TokenTransfer"]:
 fig_norm_tx = go.Figure()
 fig_norm_tx.add_bar(x=tx_norm["Type"], y=tx_norm["GMP"], name="GMP", marker_color="#fd9a57")
 fig_norm_tx.add_bar(x=tx_norm["Type"], y=tx_norm["TokenTransfer"], name="Token Transfer", marker_color="#85c2fb")
-fig_norm_tx.update_layout(barmode="stack", title="📦 Normalized Transaction Count Share by Service", yaxis_tickformat=".0%")
-st.plotly_chart(fig_norm_tx, use_container_width=True)
+fig_norm_tx.update_layout(barmode="stack", title="📦 Normalized Transaction Count Share by Service", yaxis_tickformat=".0%", height=450)
+
+# --- ⬇️ در یک ردیف
+c5, c6 = st.columns(2)
+with c5:
+    st.plotly_chart(fig_norm_vol, use_container_width=True)
+with c6:
+    st.plotly_chart(fig_norm_tx, use_container_width=True)
