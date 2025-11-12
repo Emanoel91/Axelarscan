@@ -162,9 +162,9 @@ vol_df = pd.merge(df_in_agg[["timestamp","volume"]],
 vol_df["diff"] = vol_df["volume_in"] - vol_df["volume_out"]
 
 fig_vol = go.Figure()
-fig_vol.add_bar(x=vol_df["timestamp"], y=vol_df["volume_in"], name="Inbound Volume", marker_color="#00b894")
-fig_vol.add_bar(x=vol_df["timestamp"], y=-vol_df["volume_out"], name="Outbound Volume", marker_color="#d63031")
-fig_vol.add_trace(go.Scatter(x=vol_df["timestamp"], y=vol_df["diff"], name="Net Volume", mode="lines", yaxis="y2", line=dict(color="#0984e3", width=2)))
+fig_vol.add_bar(x=vol_df["timestamp"], y=vol_df["volume_in"], name="Inbound", marker_color="#00b894")
+fig_vol.add_bar(x=vol_df["timestamp"], y=-vol_df["volume_out"], name="Outbound", marker_color="#d63031")
+fig_vol.add_trace(go.Scatter(x=vol_df["timestamp"], y=vol_df["diff"], name="Net", mode="lines", yaxis="y2", line=dict(color="#0984e3", width=2)))
 fig_vol.update_layout(title=f"Inbound & Outbound Volume per {timeframe.capitalize()}",
                       yaxis=dict(title="$USD", side="left"),
                       yaxis2=dict(title="$USD", overlaying="y", side="right"),
@@ -178,8 +178,8 @@ tx_df = pd.merge(df_in_agg[["timestamp","num_txs"]],
 tx_df["total"] = tx_df["num_txs_in"] + tx_df["num_txs_out"]
 
 fig_tx = go.Figure()
-fig_tx.add_bar(x=tx_df["timestamp"], y=tx_df["num_txs_in"], name="Inbound Tx", marker_color="#74b9ff")
-fig_tx.add_bar(x=tx_df["timestamp"], y=tx_df["num_txs_out"], name="Outbound Tx", marker_color="#ffeaa7")
+fig_tx.add_bar(x=tx_df["timestamp"], y=tx_df["num_txs_in"], name="Inbound", marker_color="#74b9ff")
+fig_tx.add_bar(x=tx_df["timestamp"], y=tx_df["num_txs_out"], name="Outbound", marker_color="#ffeaa7")
 fig_tx.add_trace(go.Scatter(x=tx_df["timestamp"], y=tx_df["total"], name="Total", mode="lines", line=dict(color="#6c5ce7", width=2)))
 fig_tx.update_layout(barmode="stack", title=f"Inbound/Outbound Transaction Counts per {timeframe.capitalize()}", height=480, 
                      legend=dict(orientation="h", yanchor="bottom", y=1.05, xanchor="center", x=0.5))
