@@ -165,9 +165,9 @@ fig_vol = go.Figure()
 fig_vol.add_bar(x=vol_df["timestamp"], y=vol_df["volume_in"], name="Inbound Volume", marker_color="#00b894")
 fig_vol.add_bar(x=vol_df["timestamp"], y=-vol_df["volume_out"], name="Outbound Volume", marker_color="#d63031")
 fig_vol.add_trace(go.Scatter(x=vol_df["timestamp"], y=vol_df["diff"], name="Net Volume", mode="lines", yaxis="y2", line=dict(color="#0984e3", width=2)))
-fig_vol.update_layout(title=f"🔹 Inbound & Outbound Volume per {timeframe.capitalize()}",
-                      yaxis=dict(title="Volume ($)", side="left"),
-                      yaxis2=dict(title="Net Volume ($)", overlaying="y", side="right"),
+fig_vol.update_layout(title=f"Inbound & Outbound Volume per {timeframe.capitalize()}",
+                      yaxis=dict(title="$USD", side="left"),
+                      yaxis2=dict(title="$USD", overlaying="y", side="right"),
                       barmode="relative",
                       height=480)
 
