@@ -149,10 +149,10 @@ total_out_txs = df_out_agg["num_txs"].sum()
 total_in_txs = df_in_agg["num_txs"].sum()
 net_volume = total_in_vol - total_out_vol
 
-st.markdown("### 📊 Key Performance Indicators (KPIs)")
+st.markdown("### Key Performance Indicators (KPIs)")
 k1, k2, k3 = st.columns(3)
-k1.metric("💰 Total Volume", f"${(total_in_vol+total_out_vol):,.2f}")
-k2.metric("🔁 Total Transfers", f"{int(total_in_txs+total_out_txs):,}")
+k1.metric("💸 Total Volume", f"${(total_in_vol+total_out_vol):,.2f}")
+k2.metric("🚀 Total Transfers", f"{int(total_in_txs+total_out_txs):,}")
 k3.metric("⚖️ Net Bridged Volume", f"${net_volume:,.2f}")
 
 # ------------------------------ Chart 1: In vs Out Volume ------------------
