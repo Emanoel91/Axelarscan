@@ -191,7 +191,7 @@ with c2:
 
 # ------------------------------ Chart 3: Cumulative Net Volume -------------
 vol_df["cum_diff"] = vol_df["diff"].cumsum()
-fig_cum = px.line(vol_df, x="timestamp", y="cum_diff", title=f"Cumulative Net Volume per {timeframe.capitalize()}", markers=)
+fig_cum = px.line(vol_df, x="timestamp", y="cum_diff", title=f"Cumulative Net Volume per {timeframe.capitalize()}", markers=True)
 
 # ------------------------------ Chart 4: Inbound Ratio ---------------------
 tx_df["in_ratio"] = tx_df["num_txs_in"] / tx_df["total"].replace(0,1)
