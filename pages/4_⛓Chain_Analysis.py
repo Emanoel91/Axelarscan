@@ -181,7 +181,7 @@ fig_tx = go.Figure()
 fig_tx.add_bar(x=tx_df["timestamp"], y=tx_df["num_txs_in"], name="Inbound", marker_color="#74b9ff")
 fig_tx.add_bar(x=tx_df["timestamp"], y=tx_df["num_txs_out"], name="Outbound", marker_color="#ffeaa7")
 fig_tx.add_trace(go.Scatter(x=tx_df["timestamp"], y=tx_df["total"], name="Total", mode="lines", line=dict(color="#6c5ce7", width=2)))
-fig_tx.update_layout(barmode="stack", title=f"Inbound & Outbound Transaction Counts per {timeframe.capitalize()}", height=480, 
+fig_tx.update_layout(barmode="stack", title=f"Inbound & Outbound Transaction Count per {timeframe.capitalize()}", height=480, 
                      legend=dict(orientation="h", yanchor="bottom", y=1.05, xanchor="center", x=0.5))
 
 c1, c2 = st.columns(2)
