@@ -28,13 +28,15 @@ chains = [
 default_start = datetime(2025, 1, 1).date()
 default_end = datetime(2025, 11, 1).date()
 
-col1, col2, col3 = st.columns([2,2,2])
+col1, col2, col3, col4 = st.columns([2,2,2,1.5])
 with col1:
     selected_chain = st.selectbox("🔗 Select Chain", chains, index=0)
 with col2:
     from_date = st.date_input("Start Date", value=default_start)
 with col3:
     to_date = st.date_input("End Date", value=default_end)
+with col4:
+    timeframe = st.selectbox("🕒 Timeframe", ["day", "week", "month"], index=0)
 
 # ------------------------------ Helper ------------------------------------
 def safe_parse_timestamp_series(series):
@@ -70,7 +72,7 @@ def fetch_chain_data(chain, role, from_date, to_date):
         return pd.DataFrame(columns=["timestamp","num_txs","volume","gmp_num_txs","gmp_volume","transfers_num_txs","transfers_volume"])
 
 # ------------------------------ Fetch both roles ---------------------------
-with st.spinner("Fetching data..."):
+with st.spinner("Fetching data from Axelar API..."):
     df_out = fetch_chain_data(selected_chain, "sourceChain", from_date, to_date)
     df_in = fetch_chain_data(selected_chain, "destinationChain", from_date, to_date)
 
@@ -78,16 +80,23 @@ if df_out.empty and df_in.empty:
     st.warning("No data found for selected range/chain.")
     st.stop()
 
-# ------------------------------ Aggregate by day ---------------------------
-def aggregate(df):
+# ------------------------------ Aggregation ---------------------------
+def aggregate(df, timeframe):
     if df.empty:
         return df
     df = df.copy()
-    df["timestamp"] = df["timestamp"].dt.floor("D")
-    return df.groupby("timestamp", as_index=False).sum()
+    df = df.set_index("timestamp")
+    if timeframe == "day":
+        df = df.resample("D").sum()
+    elif timeframe == "week":
+        df = df.resample("W").sum()
+    elif timeframe == "month":
+        df = df.resample("M").sum()
+    df = df.reset_index()
+    return df
 
-df_out_agg = aggregate(df_out)
-df_in_agg = aggregate(df_in)
+df_out_agg = aggregate(df_out, timeframe)
+df_in_agg = aggregate(df_in, timeframe)
 
 # ------------------------------ KPIs --------------------------------------
 total_out_vol = df_out_agg["volume"].sum()
@@ -112,7 +121,7 @@ fig_vol = go.Figure()
 fig_vol.add_bar(x=vol_df["timestamp"], y=vol_df["volume_in"], name="Inbound Volume", marker_color="#00b894")
 fig_vol.add_bar(x=vol_df["timestamp"], y=-vol_df["volume_out"], name="Outbound Volume", marker_color="#d63031")
 fig_vol.add_trace(go.Scatter(x=vol_df["timestamp"], y=vol_df["diff"], name="Net Volume", mode="lines", yaxis="y2", line=dict(color="#0984e3", width=2)))
-fig_vol.update_layout(title="🔹 Inbound & Outbound Volume per Day",
+fig_vol.update_layout(title=f"🔹 Inbound & Outbound Volume per {timeframe.capitalize()}",
                       yaxis=dict(title="Volume ($)", side="left"),
                       yaxis2=dict(title="Net Volume ($)", overlaying="y", side="right"),
                       barmode="relative",
@@ -121,7 +130,7 @@ st.plotly_chart(fig_vol, use_container_width=True)
 
 # ------------------------------ Chart 2: Cumulative Net Volume -------------
 vol_df["cum_diff"] = vol_df["diff"].cumsum()
-fig_cum = px.line(vol_df, x="timestamp", y="cum_diff", title="📈 Cumulative Net Volume", markers=True)
+fig_cum = px.line(vol_df, x="timestamp", y="cum_diff", title=f"📈 Cumulative Net Volume ({timeframe.capitalize()} Aggregation)", markers=True)
 st.plotly_chart(fig_cum, use_container_width=True)
 
 # ------------------------------ Chart 3: Tx Count stacked ------------------
@@ -134,12 +143,12 @@ fig_tx = go.Figure()
 fig_tx.add_bar(x=tx_df["timestamp"], y=tx_df["num_txs_in"], name="Inbound Tx", marker_color="#74b9ff")
 fig_tx.add_bar(x=tx_df["timestamp"], y=tx_df["num_txs_out"], name="Outbound Tx", marker_color="#ffeaa7")
 fig_tx.add_trace(go.Scatter(x=tx_df["timestamp"], y=tx_df["total"], name="Total", mode="lines", line=dict(color="#6c5ce7", width=2)))
-fig_tx.update_layout(barmode="stack", title="🧮 Inbound/Outbound Transaction Counts")
+fig_tx.update_layout(barmode="stack", title=f"🧮 Inbound/Outbound Transaction Counts ({timeframe.capitalize()})")
 st.plotly_chart(fig_tx, use_container_width=True)
 
 # ------------------------------ Chart 4: Inbound Ratio ---------------------
 tx_df["in_ratio"] = tx_df["num_txs_in"] / tx_df["total"].replace(0,1)
-fig_ratio = px.line(tx_df, x="timestamp", y="in_ratio", title="📊 Inbound / Total Transaction Ratio")
+fig_ratio = px.line(tx_df, x="timestamp", y="in_ratio", title=f"📊 Inbound / Total Transaction Ratio ({timeframe.capitalize()})")
 fig_ratio.update_yaxes(tickformat=".0%")
 st.plotly_chart(fig_ratio, use_container_width=True)
 
