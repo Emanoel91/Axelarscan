@@ -169,7 +169,7 @@ fig_vol.update_layout(title=f"Inbound & Outbound Volume per {timeframe.capitaliz
                       yaxis=dict(title="$USD", side="left"),
                       yaxis2=dict(title="$USD", overlaying="y", side="right"),
                       barmode="relative",
-                      height=480)
+                      height=480, legend=dict(orientation="h", yanchor="bottom", y=1.05, xanchor="center", x=0.5))
 
 # ------------------------------ Chart 2: Tx Count stacked ------------------
 tx_df = pd.merge(df_in_agg[["timestamp","num_txs"]],
@@ -181,7 +181,8 @@ fig_tx = go.Figure()
 fig_tx.add_bar(x=tx_df["timestamp"], y=tx_df["num_txs_in"], name="Inbound Tx", marker_color="#74b9ff")
 fig_tx.add_bar(x=tx_df["timestamp"], y=tx_df["num_txs_out"], name="Outbound Tx", marker_color="#ffeaa7")
 fig_tx.add_trace(go.Scatter(x=tx_df["timestamp"], y=tx_df["total"], name="Total", mode="lines", line=dict(color="#6c5ce7", width=2)))
-fig_tx.update_layout(barmode="stack", title=f"Inbound/Outbound Transaction Counts per {timeframe.capitalize()}", height=480)
+fig_tx.update_layout(barmode="stack", title=f"Inbound/Outbound Transaction Counts per {timeframe.capitalize()}", height=480, 
+                     legend=dict(orientation="h", yanchor="bottom", y=1.05, xanchor="center", x=0.5))
 
 c1, c2 = st.columns(2)
 with c1:
