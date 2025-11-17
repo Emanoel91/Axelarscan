@@ -37,8 +37,8 @@ st.markdown(
     """
     <div style="margin-top: 20px; margin-bottom: 20px; font-size: 16px;">
         <div style="display: flex; align-items: center; gap: 10px;">
-            <img src="https://pbs.twimg.com/profile_images/1856738793325268992/OouKI10c_400x400.jpg" alt="Flipside" style="width:25px; height:25px; border-radius: 50%;">
-            <span>Data Powered by: <a href="https://flipsidecrypto.xyz/home/" target="_blank">Flipside</a></span>
+            <img src="https://axelarscan.io/logos/logo.png" alt="AXELARSCAN" style="width:25px; height:25px; border-radius: 50%;">
+            <span>Data Powered by: <a href="https://docs.axelarscan.io/" target="_blank">Axelar API</a></span>
         </div>
     </div>
     """,
