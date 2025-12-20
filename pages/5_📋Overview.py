@@ -24,12 +24,6 @@ chains = [
 BASE_URL = "https://api.axelarscan.io/api/interchainChart"
 
 # ------------------------------- Helpers -------------------------------------
-def to_excel(df, sheet_name="Sheet1"):
-    buffer = BytesIO()
-    with pd.ExcelWriter(buffer, engine="xlsxwriter") as writer:
-        df.to_excel(writer, sheet_name=sheet_name, index=True)
-    return buffer.getvalue()
-
 def net_color(v):
     if v > 0:
         return "color: green; font-weight: 700;"
@@ -85,7 +79,7 @@ with st.spinner("Fetching all chains data..."):
         })
 
 df = pd.DataFrame(rows).sort_values("Chain").reset_index(drop=True)
-df.index = df.index + 1
+df.index += 1
 
 # ------------------------------- Main table -----------------------------------
 st.subheader("📋 Interchain Flow Table")
@@ -96,43 +90,25 @@ styled_df = (
       .applymap(net_color, subset=["Net Volume ($)"])
       .format({col: smart_fmt for col in num_cols})
 )
-
 st.dataframe(styled_df, use_container_width=True)
-
-st.download_button(
-    "⬇️ Download Interchain Flow (Excel)",
-    to_excel(df, "Interchain Flow"),
-    "axelar_interchain_flow.xlsx"
-)
 
 # ------------------------------- Rankings -------------------------------------
 st.subheader("📊 Chains Ranking")
 
 c1, c2 = st.columns(2)
 
+df_tr = df.sort_values("Total Transfers", ascending=False)
+df_vol = df.sort_values("Total Volume ($)", ascending=False)
+
 with c1:
-    df_tr = df.sort_values("Total Transfers", ascending=False)
     fig = px.bar(df_tr, x="Chain", y="Total Transfers", title="Chains by Total Transfers")
     fig.update_layout(xaxis_tickangle=-45)
     st.plotly_chart(fig, use_container_width=True)
 
-    st.download_button(
-        "⬇️ Download Transfers Ranking (Excel)",
-        to_excel(df_tr, "Transfers Ranking"),
-        "chains_by_total_transfers.xlsx"
-    )
-
 with c2:
-    df_vol = df.sort_values("Total Volume ($)", ascending=False)
     fig = px.bar(df_vol, x="Chain", y="Total Volume ($)", title="Chains by Total Volume ($)")
     fig.update_layout(xaxis_tickangle=-45)
     st.plotly_chart(fig, use_container_width=True)
-
-    st.download_button(
-        "⬇️ Download Volume Ranking (Excel)",
-        to_excel(df_vol, "Volume Ranking"),
-        "chains_by_total_volume.xlsx"
-    )
 
 # ------------------------------- Distribution --------------------------------
 st.subheader("🍩 Distribution by Ranges")
@@ -158,24 +134,14 @@ def donut(series, title):
 d1, d2 = st.columns(2)
 
 with d1:
-    fig, dist_tr = donut(df["Transfer Range"], "Chains by Total Transfers Range")
-    st.plotly_chart(fig, use_container_width=True)
-    st.download_button(
-        "⬇️ Download Transfer Range Distribution",
-        to_excel(dist_tr, "Transfer Ranges"),
-        "transfer_range_distribution.xlsx"
-    )
+    fig_tr, dist_tr = donut(df["Transfer Range"], "Chains by Total Transfers Range")
+    st.plotly_chart(fig_tr, use_container_width=True)
 
 with d2:
-    fig, dist_vol = donut(df["Volume Range"], "Chains by Total Volume Range")
-    st.plotly_chart(fig, use_container_width=True)
-    st.download_button(
-        "⬇️ Download Volume Range Distribution",
-        to_excel(dist_vol, "Volume Ranges"),
-        "volume_range_distribution.xlsx"
-    )
+    fig_vol, dist_vol = donut(df["Volume Range"], "Chains by Total Volume Range")
+    st.plotly_chart(fig_vol, use_container_width=True)
 
-# ------------------------------- TVL (Axelar + Llama) --------------------------
+# ------------------------------- TVL ------------------------------------------
 @st.cache_data(ttl=3600)
 def load_axelar_api():
     return requests.get("https://api.axelarscan.io/api/getTVL").json()
@@ -200,28 +166,26 @@ chains_df.index += 1
 st.markdown("### 📊 TVL of Different Chains")
 st.dataframe(chains_df.style.format({"TVL (USD)":"{:,.0f}"}), use_container_width=True)
 
-st.download_button(
-    "⬇️ Download Chains TVL (Excel)",
-    to_excel(chains_df, "TVL by Chain"),
-    "chains_tvl.xlsx"
-)
-
-# ------------------------------- Top 20 TVL ----------------------------------
 top20 = chains_df.head(20)
 
-def human(n):
-    return f"{n/1e9:.1f}B" if n>=1e9 else f"{n/1e6:.1f}M" if n>=1e6 else f"{n/1e3:.1f}K"
+# ------------------------------- 📦 Multi-Sheet Excel --------------------------
+st.markdown("## 📦 Download Full Report (Excel)")
 
-fig = px.bar(
-    top20, x="Chain Name", y="TVL (USD)",
-    text=top20["TVL (USD)"].apply(human),
-    title="🏆 Top 20 Chains by TVL"
-)
-fig.update_traces(textposition="outside")
-st.plotly_chart(fig, use_container_width=True)
+def export_full_excel():
+    buffer = BytesIO()
+    with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
+        df.to_excel(writer, sheet_name="Interchain Flow")
+        df_tr.to_excel(writer, sheet_name="Transfers Ranking")
+        df_vol.to_excel(writer, sheet_name="Volume Ranking")
+        dist_tr.to_excel(writer, sheet_name="Transfer Range Distribution", index=False)
+        dist_vol.to_excel(writer, sheet_name="Volume Range Distribution", index=False)
+        chains_df.to_excel(writer, sheet_name="Chains TVL")
+        top20.to_excel(writer, sheet_name="Top 20 TVL")
+    return buffer.getvalue()
 
 st.download_button(
-    "⬇️ Download Top 20 Chains by TVL (Excel)",
-    to_excel(top20, "Top 20 TVL"),
-    "top_20_chains_by_tvl.xlsx"
+    "⬇️ Download Full Axelar Report (Excel)",
+    export_full_excel(),
+    "axelar_full_report.xlsx",
+    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 )
