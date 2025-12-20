@@ -177,27 +177,3 @@ with d2:
         use_container_width=True
     )
 
-# ------------------------------- Tables per range -----------------------------
-st.subheader("📋 Chains per Transfer Range")
-
-for r in transfer_labels:
-    sub = df[df["Transfer Range"] == r]
-    if not sub.empty:
-        st.markdown(f"**{r} Transfers**")
-        st.dataframe(
-            sub[["Chain", "Total Transfers"]]
-            .style.format({"Total Transfers": smart_fmt}),
-            use_container_width=True
-        )
-
-st.subheader("📋 Chains per Volume Range")
-
-for r in volume_labels:
-    sub = df[df["Volume Range"] == r]
-    if not sub.empty:
-        st.markdown(f"**{r} Volume**")
-        st.dataframe(
-            sub[["Chain", "Total Volume ($)"]]
-            .style.format({"Total Volume ($)": smart_fmt}),
-            use_container_width=True
-        )
