@@ -177,8 +177,32 @@ with d2:
         use_container_width=True
     )
 
-# ------------------------------------------------------------------------------------------------------------------------------------------------
-# --- Load Chains API ---
+# --------------------------------------------------------------------------------
+# --- Load Axelar TVL API ---
+@st.cache_data(ttl=3600)
+def load_axelar_api():
+    url = "https://api.axelarscan.io/api/getTVL"
+    response = requests.get(url)
+    if response.status_code == 200:
+        return response.json()
+    else:
+        st.error(f"Failed to fetch Axelar API: {response.status_code}")
+        return None
+
+data = load_axelar_api()
+
+# --- Parse Axelar TVL ---
+rows = []
+if data and "data" in data:
+    for asset in data["data"]:
+        value = asset.get("value", 0)
+        rows.append({"Total Asset Value (USD)": value})
+
+axelar_df = pd.DataFrame(rows)
+total_axelar_tvl = axelar_df["Total Asset Value (USD)"].sum()
+
+# --------------------------------------------------------------------------------
+# --- Load Chains TVL API (DefiLlama) ---
 @st.cache_data(ttl=3600)
 def load_chains_api():
     url = "https://api.llama.fi/v2/chains"
@@ -190,12 +214,12 @@ def load_chains_api():
         return []
 
 chains_data = load_chains_api()
-
 chains_df = pd.DataFrame(chains_data)
 
 chains_df = chains_df[["name", "tvl", "tokenSymbol"]]
 chains_df.columns = ["Chain Name", "TVL (USD)", "Native Token Symbol"]
 
+# --- Add Axelar manually ---
 chains_df = pd.concat([
     chains_df,
     pd.DataFrame([{
@@ -206,10 +230,12 @@ chains_df = pd.concat([
 ], ignore_index=True)
 
 chains_df = chains_df.sort_values("TVL (USD)", ascending=False).reset_index(drop=True)
-
 chains_df.index = chains_df.index + 1
 
-st.markdown("### TVL of Different Chains")
+# --------------------------------------------------------------------------------
+# --- Table: TVL of Different Chains ---
+st.markdown("### 📊 TVL of Different Chains")
+
 st.dataframe(
     chains_df.style.format({
         "TVL (USD)": "{:,.0f}"
@@ -217,7 +243,8 @@ st.dataframe(
     use_container_width=True
 )
 
-# ----------------------------------------------------------------------------------------------------------------------------
+# --------------------------------------------------------------------------------
+# --- Top 20 Chains by TVL ---
 top_20_chains = chains_df.head(20).reset_index()
 
 def human_format(num):
@@ -230,20 +257,18 @@ def human_format(num):
     else:
         return str(int(num))
 
-# --- Bar Chart ---
 fig_bar = px.bar(
     top_20_chains,
     x="Chain Name",
     y="TVL (USD)",
-    color="Chain Name",
     text=top_20_chains["TVL (USD)"].apply(human_format),
-    title="Top 20 Chains by TVL ($USD)"
+    title="🏆 Top 20 Chains by TVL ($USD)"
 )
 
 fig_bar.update_traces(textposition="outside")
 fig_bar.update_layout(
     xaxis_title="Chain",
-    yaxis_title="$USD",
+    yaxis_title="TVL ($USD)",
     showlegend=False,
     plot_bgcolor="white"
 )
