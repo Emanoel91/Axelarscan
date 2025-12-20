@@ -1,15 +1,11 @@
 import streamlit as st
 import pandas as pd
 import requests
+import plotly.express as px
 
 # -------------------------------- Page config --------------------------------
-st.set_page_config(
-    page_title="Axelar Chain KPIs",
-    page_icon="🔗",
-    layout="wide"
-)
-
-st.title("🔗 Axelar – All-Time Input / Output KPIs by Chain")
+st.set_page_config(page_title="Axelar Chain KPIs", layout="wide")
+st.title("🔗 Axelar – All-Time Interchain KPIs by Chain")
 
 # ------------------------------- Chains list ---------------------------------
 chains = [
@@ -26,109 +22,134 @@ chains = [
 
 BASE_URL = "https://api.axelarscan.io/api/interchainChart"
 
-# ------------------------------- Data fetcher ---------------------------------
-@st.cache_data(show_spinner=False)
-def fetch_chain_stats(chain_name, mode="source"):
-    params = {}
-    if mode == "source":
-        params["sourceChain"] = chain_name
+# ------------------------------- Helpers -------------------------------------
+def format_number(x):
+    x = float(x)
+    if abs(x) >= 1e9:
+        return f"{x/1e9:.2f}B"
+    elif abs(x) >= 1e6:
+        return f"{x/1e6:.2f}M"
+    elif abs(x) >= 1e3:
+        return f"{x/1e3:.2f}k"
     else:
-        params["destinationChain"] = chain_name
+        return f"{int(x)}"
 
+def net_volume_color(val):
+    if val > 0:
+        return "color: green; font-weight: 700;"
+    elif val < 0:
+        return "color: red; font-weight: 700;"
+    else:
+        return "color: gray;"
+
+@st.cache_data(show_spinner=False)
+def fetch_chain_stats(chain, mode):
+    params = {"sourceChain": chain} if mode == "source" else {"destinationChain": chain}
     try:
         r = requests.get(BASE_URL, params=params, timeout=30)
-        r.raise_for_status()
         data = r.json().get("data", [])
     except Exception:
         data = []
 
     if not data:
-        return {
-            "Transfers": 0,
-            "Volume": 0,
-            "GMP_Transfers": 0,
-            "Token_Transfers": 0,
-            "GMP_Volume": 0,
-            "Token_Volume": 0,
-        }
+        return dict.fromkeys(
+            ["Transfers","Volume","GMP_Transfers","Token_Transfers","GMP_Volume","Token_Volume"], 0
+        )
 
-    df = pd.DataFrame(data)
-
-    for col in [
-        "num_txs", "volume",
-        "gmp_num_txs", "transfers_num_txs",
-        "gmp_volume", "transfers_volume"
-    ]:
-        if col not in df.columns:
-            df[col] = 0
-
-    df = df.fillna(0)
+    df = pd.DataFrame(data).fillna(0)
 
     return {
-        "Transfers": int(df["num_txs"].sum()),
-        "Volume": float(df["volume"].sum()),
-        "GMP_Transfers": int(df["gmp_num_txs"].sum()),
-        "Token_Transfers": int(df["transfers_num_txs"].sum()),
-        "GMP_Volume": float(df["gmp_volume"].sum()),
-        "Token_Volume": float(df["transfers_volume"].sum()),
+        "Transfers": df.get("num_txs", 0).sum(),
+        "Volume": df.get("volume", 0).sum(),
+        "GMP_Transfers": df.get("gmp_num_txs", 0).sum(),
+        "Token_Transfers": df.get("transfers_num_txs", 0).sum(),
+        "GMP_Volume": df.get("gmp_volume", 0).sum(),
+        "Token_Volume": df.get("transfers_volume", 0).sum(),
     }
 
 # ------------------------------- Build table ---------------------------------
-with st.spinner("Fetching all chains data from Axelar API..."):
+with st.spinner("Fetching all chains data..."):
     rows = []
-
     for chain in chains:
-        output_stats = fetch_chain_stats(chain, "source")
-        input_stats  = fetch_chain_stats(chain, "destination")
-
-        # ---------- Calculated KPIs ----------
-        total_transfers = output_stats["Transfers"] + input_stats["Transfers"]
-        total_volume    = output_stats["Volume"] + input_stats["Volume"]
-        net_volume      = input_stats["Volume"] - output_stats["Volume"]
+        out_ = fetch_chain_stats(chain, "source")
+        in_  = fetch_chain_stats(chain, "destination")
 
         rows.append({
             "Chain": chain,
+            "Total Transfers": out_["Transfers"] + in_["Transfers"],
+            "Total Volume ($)": out_["Volume"] + in_["Volume"],
+            "Net Volume ($)": in_["Volume"] - out_["Volume"],
 
-            # -------- NEW FIRST COLUMNS --------
-            "Total Transfers": total_transfers,
-            "Total Volume ($)": total_volume,
-            "Net Volume ($)": net_volume,
-
-            # -------- Output --------
-            "Output Transfers": output_stats["Transfers"],
-            "Output Volume ($)": output_stats["Volume"],
-            "GMP Output Transfers": output_stats["GMP_Transfers"],
-            "Token Transfer Output Transfers": output_stats["Token_Transfers"],
-            "GMP Output Volume ($)": output_stats["GMP_Volume"],
-            "Token Transfer Output Volume ($)": output_stats["Token_Volume"],
-
-            # -------- Input --------
-            "Input Transfers": input_stats["Transfers"],
-            "Input Volume ($)": input_stats["Volume"],
-            "GMP Input Transfers": input_stats["GMP_Transfers"],
-            "Token Transfer Input Transfers": input_stats["Token_Transfers"],
-            "GMP Input Volume ($)": input_stats["GMP_Volume"],
-            "Token Transfer Input Volume ($)": input_stats["Token_Volume"],
+            "Output Transfers": out_["Transfers"],
+            "Output Volume ($)": out_["Volume"],
+            "Input Transfers": in_["Transfers"],
+            "Input Volume ($)": in_["Volume"],
         })
 
-    df_final = (
-        pd.DataFrame(rows)
-        .sort_values("Chain")
-        .reset_index(drop=True)
+df = pd.DataFrame(rows).sort_values("Chain").reset_index(drop=True)
+
+# ------------------------------- Styled Table --------------------------------
+st.subheader("📋 Interchain Flow Table")
+styled_df = df.style.applymap(net_volume_color, subset=["Net Volume ($)"])
+st.dataframe(styled_df, use_container_width=True)
+
+# ------------------------------- Bar Charts ----------------------------------
+st.subheader("📊 Chains Ranking")
+
+c1, c2 = st.columns(2)
+
+with c1:
+    df_t = df.sort_values("Total Transfers", ascending=False)
+    fig = px.bar(
+        df_t, x="Chain", y="Total Transfers",
+        title="Chains by Total Transfers",
+        text=df_t["Total Transfers"].apply(format_number)
+    )
+    fig.update_traces(textposition="outside")
+    fig.update_layout(xaxis_tickangle=-45)
+    st.plotly_chart(fig, use_container_width=True)
+
+with c2:
+    df_v = df.sort_values("Total Volume ($)", ascending=False)
+    fig = px.bar(
+        df_v, x="Chain", y="Total Volume ($)",
+        title="Chains by Total Volume ($)",
+        text=df_v["Total Volume ($)"].apply(format_number)
+    )
+    fig.update_traces(textposition="outside")
+    fig.update_layout(xaxis_tickangle=-45)
+    st.plotly_chart(fig, use_container_width=True)
+
+# ------------------------------- Donut Charts --------------------------------
+st.subheader("🍩 Distribution Overview")
+
+def donut_chart(df, value_col, title):
+    top = df.sort_values(value_col, ascending=False).head(10)
+    others = df[value_col].sum() - top[value_col].sum()
+    donut_df = pd.concat([
+        top[["Chain", value_col]],
+        pd.DataFrame({"Chain": ["Others"], value_col: [others]})
+    ])
+
+    fig = px.pie(
+        donut_df,
+        names="Chain",
+        values=value_col,
+        hole=0.55,
+        title=title
+    )
+    return fig
+
+d1, d2 = st.columns(2)
+
+with d1:
+    st.plotly_chart(
+        donut_chart(df, "Total Transfers", "Total Transfers Distribution"),
+        use_container_width=True
     )
 
-# ------------------------------- Display -------------------------------------
-st.subheader("📊 All-Time Interchain Flow Table")
-st.dataframe(
-    df_final,
-    use_container_width=True,
-    hide_index=True
-)
-
-# ------------------------------- Download ------------------------------------
-st.download_button(
-    "⬇️ Download CSV",
-    df_final.to_csv(index=False),
-    file_name="axelar_chain_kpis_all_time.csv",
-    mime="text/csv"
-)
+with d2:
+    st.plotly_chart(
+        donut_chart(df, "Total Volume ($)", "Total Volume Distribution ($)"),
+        use_container_width=True
+    )
