@@ -1,5 +1,9 @@
+import streamlit as st
 import pandas as pd
 import requests
+
+st.set_page_config(page_title="Axelar Chain KPIs", layout="wide")
+st.title("🔗 Axelar – Input / Output KPIs by Chain (All Time)")
 
 # ------------------------------- Chains list ---------------------------------
 chains = [
@@ -16,24 +20,16 @@ chains = [
 
 BASE_URL = "https://api.axelarscan.io/api/interchainChart"
 
-# ------------------------------- Helper function ------------------------------
+@st.cache_data(show_spinner=False)
 def fetch_chain_stats(chain_name, mode="source"):
-    """
-    mode = 'source'  -> Output
-    mode = 'destination' -> Input
-    """
     params = {}
     if mode == "source":
         params["sourceChain"] = chain_name
     else:
         params["destinationChain"] = chain_name
 
-    try:
-        r = requests.get(BASE_URL, params=params, timeout=30)
-        r.raise_for_status()
-        data = r.json().get("data", [])
-    except Exception:
-        data = []
+    r = requests.get(BASE_URL, params=params, timeout=30)
+    data = r.json().get("data", [])
 
     if not data:
         return {
@@ -64,41 +60,38 @@ def fetch_chain_stats(chain_name, mode="source"):
         "Token_Volume": float(df["transfers_volume"].sum()),
     }
 
-# ------------------------------- Main loop -----------------------------------
-rows = []
+# ------------------------------- Build table ---------------------------------
+with st.spinner("Fetching data for all chains..."):
+    rows = []
 
-for chain in chains:
-    output_stats = fetch_chain_stats(chain, mode="source")
-    input_stats  = fetch_chain_stats(chain, mode="destination")
+    for chain in chains:
+        output_stats = fetch_chain_stats(chain, "source")
+        input_stats  = fetch_chain_stats(chain, "destination")
 
-    rows.append({
-        "Chain": chain,
+        rows.append({
+            "Chain": chain,
 
-        # -------- Output --------
-        "Output Transfers": output_stats["Transfers"],
-        "Output Volume": output_stats["Volume"],
-        "GMP Output Transfers": output_stats["GMP_Transfers"],
-        "Token Transfer Output Transfers": output_stats["Token_Transfers"],
-        "GMP Output Volume": output_stats["GMP_Volume"],
-        "Token Transfer Output Volume": output_stats["Token_Volume"],
+            "Output Transfers": output_stats["Transfers"],
+            "Output Volume ($)": output_stats["Volume"],
+            "GMP Output Transfers": output_stats["GMP_Transfers"],
+            "Token Transfer Output Transfers": output_stats["Token_Transfers"],
+            "GMP Output Volume ($)": output_stats["GMP_Volume"],
+            "Token Transfer Output Volume ($)": output_stats["Token_Volume"],
 
-        # -------- Input --------
-        "Input Transfers": input_stats["Transfers"],
-        "Input Volume": input_stats["Volume"],
-        "GMP Input Transfers": input_stats["GMP_Transfers"],
-        "Token Transfer Input Transfers": input_stats["Token_Transfers"],
-        "GMP Input Volume": input_stats["GMP_Volume"],
-        "Token Transfer Input Volume": input_stats["Token_Volume"],
-    })
+            "Input Transfers": input_stats["Transfers"],
+            "Input Volume ($)": input_stats["Volume"],
+            "GMP Input Transfers": input_stats["GMP_Transfers"],
+            "Token Transfer Input Transfers": input_stats["Token_Transfers"],
+            "GMP Input Volume ($)": input_stats["GMP_Volume"],
+            "Token Transfer Input Volume ($)": input_stats["Token_Volume"],
+        })
 
-# ------------------------------- Final Table ----------------------------------
-df_final = pd.DataFrame(rows)
+    df_final = pd.DataFrame(rows).sort_values("Chain").reset_index(drop=True)
 
-# Sort alphabetically by chain name
-df_final = df_final.sort_values("Chain").reset_index(drop=True)
-
-# نمایش
-print(df_final)
-
-# اگر خواستی ذخیره کنی:
-# df_final.to_csv("axelar_chain_kpis.csv", index=False)
+# ------------------------------- Display -------------------------------------
+st.subheader("📊 All-Time Interchain KPIs by Chain")
+st.dataframe(
+    df_final,
+    use_container_width=True,
+    hide_index=True
+)
