@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import requests
 import plotly.express as px
+from io import BytesIO
 
 # -------------------------------- Page config --------------------------------
 st.set_page_config(page_title="Axelar Chain KPIs", layout="wide")
@@ -23,6 +24,12 @@ chains = [
 BASE_URL = "https://api.axelarscan.io/api/interchainChart"
 
 # ------------------------------- Helpers -------------------------------------
+def to_excel(df, sheet_name="Sheet1"):
+    buffer = BytesIO()
+    with pd.ExcelWriter(buffer, engine="xlsxwriter") as writer:
+        df.to_excel(writer, sheet_name=sheet_name, index=True)
+    return buffer.getvalue()
+
 def net_color(v):
     if v > 0:
         return "color: green; font-weight: 700;"
@@ -78,9 +85,9 @@ with st.spinner("Fetching all chains data..."):
         })
 
 df = pd.DataFrame(rows).sort_values("Chain").reset_index(drop=True)
-df.index = df.index + 1  # index from 1
+df.index = df.index + 1
 
-# ------------------------------- Display main table ---------------------------
+# ------------------------------- Main table -----------------------------------
 st.subheader("📋 Interchain Flow Table")
 
 num_cols = df.select_dtypes("number").columns
@@ -92,185 +99,129 @@ styled_df = (
 
 st.dataframe(styled_df, use_container_width=True)
 
-# ------------------------------- Bar charts ----------------------------------
+st.download_button(
+    "⬇️ Download Interchain Flow (Excel)",
+    to_excel(df, "Interchain Flow"),
+    "axelar_interchain_flow.xlsx"
+)
+
+# ------------------------------- Rankings -------------------------------------
 st.subheader("📊 Chains Ranking")
 
 c1, c2 = st.columns(2)
 
 with c1:
-    fig = px.bar(
-        df.sort_values("Total Transfers", ascending=False),
-        x="Chain", y="Total Transfers",
-        title="Chains by Total Transfers"
-    )
+    df_tr = df.sort_values("Total Transfers", ascending=False)
+    fig = px.bar(df_tr, x="Chain", y="Total Transfers", title="Chains by Total Transfers")
     fig.update_layout(xaxis_tickangle=-45)
     st.plotly_chart(fig, use_container_width=True)
+
+    st.download_button(
+        "⬇️ Download Transfers Ranking (Excel)",
+        to_excel(df_tr, "Transfers Ranking"),
+        "chains_by_total_transfers.xlsx"
+    )
 
 with c2:
-    fig = px.bar(
-        df.sort_values("Total Volume ($)", ascending=False),
-        x="Chain", y="Total Volume ($)",
-        title="Chains by Total Volume ($)"
-    )
+    df_vol = df.sort_values("Total Volume ($)", ascending=False)
+    fig = px.bar(df_vol, x="Chain", y="Total Volume ($)", title="Chains by Total Volume ($)")
     fig.update_layout(xaxis_tickangle=-45)
     st.plotly_chart(fig, use_container_width=True)
 
-# ------------------------------- Donut distributions --------------------------
+    st.download_button(
+        "⬇️ Download Volume Ranking (Excel)",
+        to_excel(df_vol, "Volume Ranking"),
+        "chains_by_total_volume.xlsx"
+    )
+
+# ------------------------------- Distribution --------------------------------
 st.subheader("🍩 Distribution by Ranges")
 
-# ---- Transfer ranges ----
 transfer_bins = [0,10,50,100,500,1000,5000,10000,20000,50000,1e12]
-transfer_labels = [
-    "<10","11–50","51–100","101–500","501–1000",
-    "1001–5000","5001–10000","10001–20000",
-    "20001–50000",">50000"
-]
+transfer_labels = ["<10","11–50","51–100","101–500","501–1000",
+                   "1001–5000","5001–10000","10001–20000",
+                   "20001–50000",">50000"]
 
-# ---- Volume ranges ----
 volume_bins = [0,10,100,1e3,1e4,1e5,1e6,1e7,1e8,5e8,1e9,1e12]
-volume_labels = [
-    "<$10","$10–100","$100–1k","$1k–10k","$10k–100k",
-    "$100k–1m","$1m–10m","$10m–100m",
-    "$100m–500m","$500m–1b",">$1b"
-]
+volume_labels = ["<$10","$10–100","$100–1k","$1k–10k","$10k–100k",
+                 "$100k–1m","$1m–10m","$10m–100m",
+                 "$100m–500m","$500m–1b",">$1b"]
 
-df["Transfer Range"] = pd.cut(
-    df["Total Transfers"],
-    bins=transfer_bins,
-    labels=transfer_labels
-)
+df["Transfer Range"] = pd.cut(df["Total Transfers"], transfer_bins, labels=transfer_labels)
+df["Volume Range"]   = pd.cut(df["Total Volume ($)"], volume_bins, labels=volume_labels)
 
-df["Volume Range"] = pd.cut(
-    df["Total Volume ($)"],
-    bins=volume_bins,
-    labels=volume_labels
-)
-
-def donut_from_range(series, title):
-    vc = series.value_counts().reset_index(name="count")
-    fig = px.pie(
-        vc,
-        names=series.name,   # ← اسم واقعی ستون (حل نهایی خطا)
-        values="count",
-        hole=0.55,
-        title=title
-    )
-    return fig
+def donut(series, title):
+    vc = series.value_counts().reset_index(name="Chain Count")
+    fig = px.pie(vc, names=series.name, values="Chain Count", hole=0.55, title=title)
+    return fig, vc
 
 d1, d2 = st.columns(2)
 
 with d1:
-    st.plotly_chart(
-        donut_from_range(
-            df["Transfer Range"],
-            "Chains by Total Transfers Range"
-        ),
-        use_container_width=True
+    fig, dist_tr = donut(df["Transfer Range"], "Chains by Total Transfers Range")
+    st.plotly_chart(fig, use_container_width=True)
+    st.download_button(
+        "⬇️ Download Transfer Range Distribution",
+        to_excel(dist_tr, "Transfer Ranges"),
+        "transfer_range_distribution.xlsx"
     )
 
 with d2:
-    st.plotly_chart(
-        donut_from_range(
-            df["Volume Range"],
-            "Chains by Total Volume Range"
-        ),
-        use_container_width=True
+    fig, dist_vol = donut(df["Volume Range"], "Chains by Total Volume Range")
+    st.plotly_chart(fig, use_container_width=True)
+    st.download_button(
+        "⬇️ Download Volume Range Distribution",
+        to_excel(dist_vol, "Volume Ranges"),
+        "volume_range_distribution.xlsx"
     )
 
-# --------------------------------------------------------------------------------
-# --- Load Axelar TVL API ---
+# ------------------------------- TVL (Axelar + Llama) --------------------------
 @st.cache_data(ttl=3600)
 def load_axelar_api():
-    url = "https://api.axelarscan.io/api/getTVL"
-    response = requests.get(url)
-    if response.status_code == 200:
-        return response.json()
-    else:
-        st.error(f"Failed to fetch Axelar API: {response.status_code}")
-        return None
+    return requests.get("https://api.axelarscan.io/api/getTVL").json()
 
-data = load_axelar_api()
-
-# --- Parse Axelar TVL ---
-rows = []
-if data and "data" in data:
-    for asset in data["data"]:
-        value = asset.get("value", 0)
-        rows.append({"Total Asset Value (USD)": value})
-
-axelar_df = pd.DataFrame(rows)
-total_axelar_tvl = axelar_df["Total Asset Value (USD)"].sum()
-
-# --------------------------------------------------------------------------------
-# --- Load Chains TVL API (DefiLlama) ---
 @st.cache_data(ttl=3600)
 def load_chains_api():
-    url = "https://api.llama.fi/v2/chains"
-    response = requests.get(url)
-    if response.status_code == 200:
-        return response.json()
-    else:
-        st.error(f"Failed to fetch Chains API: {response.status_code}")
-        return []
+    return requests.get("https://api.llama.fi/v2/chains").json()
 
-chains_data = load_chains_api()
-chains_df = pd.DataFrame(chains_data)
+ax_data = load_axelar_api()
+ax_tvl = sum(a.get("value",0) for a in ax_data.get("data",[]))
 
-chains_df = chains_df[["name", "tvl", "tokenSymbol"]]
-chains_df.columns = ["Chain Name", "TVL (USD)", "Native Token Symbol"]
+chains_df = pd.DataFrame(load_chains_api())[["name","tvl","tokenSymbol"]]
+chains_df.columns = ["Chain Name","TVL (USD)","Native Token Symbol"]
 
-# --- Add Axelar manually ---
-chains_df = pd.concat([
-    chains_df,
-    pd.DataFrame([{
-        "Chain Name": "Axelar",
-        "TVL (USD)": total_axelar_tvl,
-        "Native Token Symbol": "AXL"
-    }])
-], ignore_index=True)
+chains_df = pd.concat([chains_df, pd.DataFrame([{
+    "Chain Name":"Axelar","TVL (USD)":ax_tvl,"Native Token Symbol":"AXL"
+}])])
 
 chains_df = chains_df.sort_values("TVL (USD)", ascending=False).reset_index(drop=True)
-chains_df.index = chains_df.index + 1
+chains_df.index += 1
 
-# --------------------------------------------------------------------------------
-# --- Table: TVL of Different Chains ---
 st.markdown("### 📊 TVL of Different Chains")
+st.dataframe(chains_df.style.format({"TVL (USD)":"{:,.0f}"}), use_container_width=True)
 
-st.dataframe(
-    chains_df.style.format({
-        "TVL (USD)": "{:,.0f}"
-    }),
-    use_container_width=True
+st.download_button(
+    "⬇️ Download Chains TVL (Excel)",
+    to_excel(chains_df, "TVL by Chain"),
+    "chains_tvl.xlsx"
 )
 
-# --------------------------------------------------------------------------------
-# --- Top 20 Chains by TVL ---
-top_20_chains = chains_df.head(20).reset_index()
+# ------------------------------- Top 20 TVL ----------------------------------
+top20 = chains_df.head(20)
 
-def human_format(num):
-    if num >= 1e9:
-        return f"{num/1e9:.1f}B"
-    elif num >= 1e6:
-        return f"{num/1e6:.1f}M"
-    elif num >= 1e3:
-        return f"{num/1e3:.1f}K"
-    else:
-        return str(int(num))
+def human(n):
+    return f"{n/1e9:.1f}B" if n>=1e9 else f"{n/1e6:.1f}M" if n>=1e6 else f"{n/1e3:.1f}K"
 
-fig_bar = px.bar(
-    top_20_chains,
-    x="Chain Name",
-    y="TVL (USD)",
-    text=top_20_chains["TVL (USD)"].apply(human_format),
-    title="🏆 Top 20 Chains by TVL ($USD)"
+fig = px.bar(
+    top20, x="Chain Name", y="TVL (USD)",
+    text=top20["TVL (USD)"].apply(human),
+    title="🏆 Top 20 Chains by TVL"
 )
+fig.update_traces(textposition="outside")
+st.plotly_chart(fig, use_container_width=True)
 
-fig_bar.update_traces(textposition="outside")
-fig_bar.update_layout(
-    xaxis_title="Chain",
-    yaxis_title="TVL ($USD)",
-    showlegend=False,
-    plot_bgcolor="white"
+st.download_button(
+    "⬇️ Download Top 20 Chains by TVL (Excel)",
+    to_excel(top20, "Top 20 TVL"),
+    "top_20_chains_by_tvl.xlsx"
 )
-
-st.plotly_chart(fig_bar, use_container_width=True)
