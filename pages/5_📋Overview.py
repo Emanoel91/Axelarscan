@@ -2,8 +2,14 @@ import streamlit as st
 import pandas as pd
 import requests
 
-st.set_page_config(page_title="Axelar Chain KPIs", layout="wide")
-st.title("🔗 Axelar – Input / Output KPIs by Chain (All Time)")
+# -------------------------------- Page config --------------------------------
+st.set_page_config(
+    page_title="Axelar Chain KPIs",
+    page_icon="🔗",
+    layout="wide"
+)
+
+st.title("🔗 Axelar – All-Time Input / Output KPIs by Chain")
 
 # ------------------------------- Chains list ---------------------------------
 chains = [
@@ -20,6 +26,7 @@ chains = [
 
 BASE_URL = "https://api.axelarscan.io/api/interchainChart"
 
+# ------------------------------- Data fetcher ---------------------------------
 @st.cache_data(show_spinner=False)
 def fetch_chain_stats(chain_name, mode="source"):
     params = {}
@@ -28,8 +35,12 @@ def fetch_chain_stats(chain_name, mode="source"):
     else:
         params["destinationChain"] = chain_name
 
-    r = requests.get(BASE_URL, params=params, timeout=30)
-    data = r.json().get("data", [])
+    try:
+        r = requests.get(BASE_URL, params=params, timeout=30)
+        r.raise_for_status()
+        data = r.json().get("data", [])
+    except Exception:
+        data = []
 
     if not data:
         return {
@@ -51,6 +62,8 @@ def fetch_chain_stats(chain_name, mode="source"):
         if col not in df.columns:
             df[col] = 0
 
+    df = df.fillna(0)
+
     return {
         "Transfers": int(df["num_txs"].sum()),
         "Volume": float(df["volume"].sum()),
@@ -61,16 +74,27 @@ def fetch_chain_stats(chain_name, mode="source"):
     }
 
 # ------------------------------- Build table ---------------------------------
-with st.spinner("Fetching data for all chains..."):
+with st.spinner("Fetching all chains data from Axelar API..."):
     rows = []
 
     for chain in chains:
         output_stats = fetch_chain_stats(chain, "source")
         input_stats  = fetch_chain_stats(chain, "destination")
 
+        # ---------- Calculated KPIs ----------
+        total_transfers = output_stats["Transfers"] + input_stats["Transfers"]
+        total_volume    = output_stats["Volume"] + input_stats["Volume"]
+        net_volume      = input_stats["Volume"] - output_stats["Volume"]
+
         rows.append({
             "Chain": chain,
 
+            # -------- NEW FIRST COLUMNS --------
+            "Total Transfers": total_transfers,
+            "Total Volume ($)": total_volume,
+            "Net Volume ($)": net_volume,
+
+            # -------- Output --------
             "Output Transfers": output_stats["Transfers"],
             "Output Volume ($)": output_stats["Volume"],
             "GMP Output Transfers": output_stats["GMP_Transfers"],
@@ -78,6 +102,7 @@ with st.spinner("Fetching data for all chains..."):
             "GMP Output Volume ($)": output_stats["GMP_Volume"],
             "Token Transfer Output Volume ($)": output_stats["Token_Volume"],
 
+            # -------- Input --------
             "Input Transfers": input_stats["Transfers"],
             "Input Volume ($)": input_stats["Volume"],
             "GMP Input Transfers": input_stats["GMP_Transfers"],
@@ -86,12 +111,24 @@ with st.spinner("Fetching data for all chains..."):
             "Token Transfer Input Volume ($)": input_stats["Token_Volume"],
         })
 
-    df_final = pd.DataFrame(rows).sort_values("Chain").reset_index(drop=True)
+    df_final = (
+        pd.DataFrame(rows)
+        .sort_values("Chain")
+        .reset_index(drop=True)
+    )
 
 # ------------------------------- Display -------------------------------------
-st.subheader("📊 All-Time Interchain KPIs by Chain")
+st.subheader("📊 All-Time Interchain Flow Table")
 st.dataframe(
     df_final,
     use_container_width=True,
     hide_index=True
+)
+
+# ------------------------------- Download ------------------------------------
+st.download_button(
+    "⬇️ Download CSV",
+    df_final.to_csv(index=False),
+    file_name="axelar_chain_kpis_all_time.csv",
+    mime="text/csv"
 )
