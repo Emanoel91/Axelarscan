@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 import requests
 import plotly.express as px
-from io import BytesIO
 
 # -------------------------------- Page config --------------------------------
 st.set_page_config(page_title="Axelar Chain KPIs", layout="wide")
@@ -79,9 +78,9 @@ with st.spinner("Fetching all chains data..."):
         })
 
 df = pd.DataFrame(rows).sort_values("Chain").reset_index(drop=True)
-df.index += 1
+df.index = df.index + 1
 
-# ------------------------------- Main table -----------------------------------
+# ------------------------------- Display main table ---------------------------
 st.subheader("📋 Interchain Flow Table")
 
 num_cols = df.select_dtypes("number").columns
@@ -90,102 +89,105 @@ styled_df = (
       .applymap(net_color, subset=["Net Volume ($)"])
       .format({col: smart_fmt for col in num_cols})
 )
+
 st.dataframe(styled_df, use_container_width=True)
 
-# ------------------------------- Rankings -------------------------------------
-st.subheader("📊 Chains Ranking")
+st.download_button(
+    "⬇️ Download Interchain Flow Table (CSV)",
+    df.to_csv(index=True),
+    file_name="axelar_interchain_flow.csv",
+    mime="text/csv"
+)
 
-c1, c2 = st.columns(2)
+# ------------------------------- Bar charts ----------------------------------
+st.subheader("📊 Chains Ranking")
 
 df_tr = df.sort_values("Total Transfers", ascending=False)
 df_vol = df.sort_values("Total Volume ($)", ascending=False)
 
+c1, c2 = st.columns(2)
+
 with c1:
-    fig = px.bar(df_tr, x="Chain", y="Total Transfers", title="Chains by Total Transfers")
+    fig = px.bar(
+        df_tr,
+        x="Chain", y="Total Transfers",
+        title="Chains by Total Transfers",
+        text=df_tr["Total Transfers"].apply(smart_fmt)
+    )
+    fig.update_traces(textposition="outside")
     fig.update_layout(xaxis_tickangle=-45)
     st.plotly_chart(fig, use_container_width=True)
+
+    st.download_button(
+        "⬇️ Download Transfers Ranking (CSV)",
+        df_tr.to_csv(index=True),
+        file_name="axelar_transfers_ranking.csv",
+        mime="text/csv"
+    )
 
 with c2:
-    fig = px.bar(df_vol, x="Chain", y="Total Volume ($)", title="Chains by Total Volume ($)")
+    fig = px.bar(
+        df_vol,
+        x="Chain", y="Total Volume ($)",
+        title="Chains by Total Volume ($)",
+        text=df_vol["Total Volume ($)"].apply(smart_fmt)
+    )
+    fig.update_traces(textposition="outside")
     fig.update_layout(xaxis_tickangle=-45)
     st.plotly_chart(fig, use_container_width=True)
 
-# ------------------------------- Distribution --------------------------------
+    st.download_button(
+        "⬇️ Download Volume Ranking (CSV)",
+        df_vol.to_csv(index=True),
+        file_name="axelar_volume_ranking.csv",
+        mime="text/csv"
+    )
+
+# ------------------------------- Donut distributions --------------------------
 st.subheader("🍩 Distribution by Ranges")
 
 transfer_bins = [0,10,50,100,500,1000,5000,10000,20000,50000,1e12]
-transfer_labels = ["<10","11–50","51–100","101–500","501–1000",
-                   "1001–5000","5001–10000","10001–20000",
-                   "20001–50000",">50000"]
+transfer_labels = [
+    "<10","11–50","51–100","101–500","501–1000",
+    "1001–5000","5001–10000","10001–20000",
+    "20001–50000",">50000"
+]
 
 volume_bins = [0,10,100,1e3,1e4,1e5,1e6,1e7,1e8,5e8,1e9,1e12]
-volume_labels = ["<$10","$10–100","$100–1k","$1k–10k","$10k–100k",
-                 "$100k–1m","$1m–10m","$10m–100m",
-                 "$100m–500m","$500m–1b",">$1b"]
+volume_labels = [
+    "<$10","$10–100","$100–1k","$1k–10k","$10k–100k",
+    "$100k–1m","$1m–10m","$10m–100m",
+    "$100m–500m","$500m–1b",">$1b"
+]
 
-df["Transfer Range"] = pd.cut(df["Total Transfers"], transfer_bins, labels=transfer_labels)
-df["Volume Range"]   = pd.cut(df["Total Volume ($)"], volume_bins, labels=volume_labels)
+df["Transfer Range"] = pd.cut(df["Total Transfers"], bins=transfer_bins, labels=transfer_labels)
+df["Volume Range"] = pd.cut(df["Total Volume ($)"], bins=volume_bins, labels=volume_labels)
 
 def donut(series, title):
-    vc = series.value_counts().reset_index(name="Chain Count")
-    fig = px.pie(vc, names=series.name, values="Chain Count", hole=0.55, title=title)
-    return fig, vc
+    vc = series.value_counts().reset_index()
+    vc.columns = [series.name, "Chains Count"]
+    return px.pie(vc, names=series.name, values="Chains Count", hole=0.55, title=title)
 
 d1, d2 = st.columns(2)
 
 with d1:
-    fig_tr, dist_tr = donut(df["Transfer Range"], "Chains by Total Transfers Range")
-    st.plotly_chart(fig_tr, use_container_width=True)
+    st.plotly_chart(donut(df["Transfer Range"], "Chains by Total Transfers Range"), use_container_width=True)
+    dist_tr = df["Transfer Range"].value_counts().reset_index()
+    dist_tr.columns = ["Transfer Range", "Chains Count"]
+    st.download_button(
+        "⬇️ Download Transfer Range Distribution (CSV)",
+        dist_tr.to_csv(index=False),
+        file_name="transfer_range_distribution.csv",
+        mime="text/csv"
+    )
 
 with d2:
-    fig_vol, dist_vol = donut(df["Volume Range"], "Chains by Total Volume Range")
-    st.plotly_chart(fig_vol, use_container_width=True)
-
-# ------------------------------- TVL ------------------------------------------
-@st.cache_data(ttl=3600)
-def load_axelar_api():
-    return requests.get("https://api.axelarscan.io/api/getTVL").json()
-
-@st.cache_data(ttl=3600)
-def load_chains_api():
-    return requests.get("https://api.llama.fi/v2/chains").json()
-
-ax_data = load_axelar_api()
-ax_tvl = sum(a.get("value",0) for a in ax_data.get("data",[]))
-
-chains_df = pd.DataFrame(load_chains_api())[["name","tvl","tokenSymbol"]]
-chains_df.columns = ["Chain Name","TVL (USD)","Native Token Symbol"]
-
-chains_df = pd.concat([chains_df, pd.DataFrame([{
-    "Chain Name":"Axelar","TVL (USD)":ax_tvl,"Native Token Symbol":"AXL"
-}])])
-
-chains_df = chains_df.sort_values("TVL (USD)", ascending=False).reset_index(drop=True)
-chains_df.index += 1
-
-st.markdown("### 📊 TVL of Different Chains")
-st.dataframe(chains_df.style.format({"TVL (USD)":"{:,.0f}"}), use_container_width=True)
-
-top20 = chains_df.head(20)
-
-# ------------------------------- 📦 Multi-Sheet Excel --------------------------
-st.markdown("## 📦 Download Full Report (Excel)")
-
-def export_full_excel():
-    buffer = BytesIO()
-    with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
-        df.to_excel(writer, sheet_name="Interchain Flow")
-        df_tr.to_excel(writer, sheet_name="Transfers Ranking")
-        df_vol.to_excel(writer, sheet_name="Volume Ranking")
-        dist_tr.to_excel(writer, sheet_name="Transfer Range Distribution", index=False)
-        dist_vol.to_excel(writer, sheet_name="Volume Range Distribution", index=False)
-        chains_df.to_excel(writer, sheet_name="Chains TVL")
-        top20.to_excel(writer, sheet_name="Top 20 TVL")
-    return buffer.getvalue()
-
-st.download_button(
-    "⬇️ Download Full Axelar Report (Excel)",
-    export_full_excel(),
-    "axelar_full_report.xlsx",
-    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-)
+    st.plotly_chart(donut(df["Volume Range"], "Chains by Total Volume Range"), use_container_width=True)
+    dist_vol = df["Volume Range"].value_counts().reset_index()
+    dist_vol.columns = ["Volume Range", "Chains Count"]
+    st.download_button(
+        "⬇️ Download Volume Range Distribution (CSV)",
+        dist_vol.to_csv(index=False),
+        file_name="volume_range_distribution.csv",
+        mime="text/csv"
+    )
