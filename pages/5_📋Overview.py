@@ -131,7 +131,7 @@ st.subheader("📋 Interchain Flow Table")
 num_cols = df.select_dtypes("number").columns
 styled_df = (
     df.style
-      .applymap(net_color, subset=["Net Volume ($)"])
+      .map(net_color, subset=["Net Volume ($)"])
       .format({col: smart_fmt for col in num_cols})
 )
 
