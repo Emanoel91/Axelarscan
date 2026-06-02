@@ -1,12 +1,5 @@
 import streamlit as st
-import pandas as pd
 import requests
-import snowflake.connector
-import plotly.express as px
-import plotly.graph_objects as go
-from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.backends import default_backend
-import networkx as nx
 
 # --- Page Config ------------------------------------------------------------------------------------------------------
 st.set_page_config(
@@ -30,8 +23,8 @@ st.sidebar.markdown(
         width: 250px;
         font-size: 13px;
         color: gray;
-        margin-left: 5px; 
-        text-align: left;  
+        margin-left: 5px;
+        text-align: left;
     }
     .sidebar-footer img {
         width: 16px;
@@ -64,46 +57,17 @@ st.sidebar.markdown(
     unsafe_allow_html=True
 )
 
-# --- Snowflake Connection ----------------------------------------------------------------------------------------
-snowflake_secrets = st.secrets["snowflake"]
-user = snowflake_secrets["user"]
-account = snowflake_secrets["account"]
-private_key_str = snowflake_secrets["private_key"]
-warehouse = snowflake_secrets.get("warehouse", "")
-database = snowflake_secrets.get("database", "")
-schema = snowflake_secrets.get("schema", "")
-
-private_key_pem = f"-----BEGIN PRIVATE KEY-----\n{private_key_str}\n-----END PRIVATE KEY-----".encode("utf-8")
-private_key = serialization.load_pem_private_key(
-    private_key_pem,
-    password=None,
-    backend=default_backend()
-)
-private_key_bytes = private_key.private_bytes(
-    encoding=serialization.Encoding.DER,
-    format=serialization.PrivateFormat.PKCS8,
-    encryption_algorithm=serialization.NoEncryption()
-)
-
-conn = snowflake.connector.connect(
-    user=user,
-    account=account,
-    private_key=private_key_bytes,
-    warehouse=warehouse,
-    database=database,
-    schema=schema
-)
-
 # --- Fetch Token Info from API ----------------------------------------------------------------------------------
 @st.cache_data(ttl=300)
 def get_token_info():
     url = "https://api.axelarscan.io/api/getTokenInfo"
-    response = requests.get(url)
+    response = requests.get(url, timeout=30)
     response.raise_for_status()
     return response.json()
 
 try:
     data = get_token_info()
+
     price = data.get("price", 0)
     market_cap = data.get("marketCap", 0)
     circulating_supply = data.get("circulatingSupply", 0)
@@ -133,24 +97,48 @@ try:
 
     # --- Row 1 ---
     col1, col2 = st.columns(2)
+
     with col1:
-        st.metric("💰 Current Price (USD)", f"${price:,.3f}")
+        st.metric(
+            "💰 Current Price (USD)",
+            f"${float(price):,.3f}"
+        )
+
     with col2:
-        st.metric("🏦 Market Cap (USD)", f"${market_cap:,.0f}")
+        st.metric(
+            "🏦 Market Cap (USD)",
+            f"${float(market_cap):,.0f}"
+        )
 
     # --- Row 2 ---
     col3, col4 = st.columns(2)
+
     with col3:
-        st.metric("🔄 Circulating Supply", f"{circulating_supply:,.0f} AXL")
+        st.metric(
+            "🔄 Circulating Supply",
+            f"{float(circulating_supply):,.0f} AXL"
+        )
+
     with col4:
-        st.metric("📈 Max Supply", f"{max_supply:,.0f} AXL")
+        st.metric(
+            "📈 Max Supply",
+            f"{float(max_supply):,.0f} AXL"
+        )
 
     # --- Row 3 ---
     col5, col6 = st.columns(2)
+
     with col5:
-        st.metric("🔥 Total Burned", f"{total_burned:,.0f} AXL")
+        st.metric(
+            "🔥 Total Burned",
+            f"{float(total_burned):,.0f} AXL"
+        )
+
     with col6:
-        st.metric("📊 Inflation", f"{inflation * 100:.2f}%")
+        st.metric(
+            "📊 Inflation",
+            f"{float(inflation) * 100:.2f}%"
+        )
 
 except Exception as e:
     st.error(f"❌ Error fetching token data: {e}")
