@@ -149,10 +149,10 @@ if timeframe == "day":
     df_agg = df_agg.groupby("timestamp", as_index=False)[num_cols].sum()
 elif timeframe == "week":
     df_agg = df.copy()
-    df_agg = df_agg.set_index("timestamp").resample("W").sum(numeric_only=True).reset_index()
+    df_agg = df_agg.set_index("timestamp").resample("WE").sum(numeric_only=True).reset_index()
 elif timeframe == "month":
     df_agg = df.copy()
-    df_agg = df_agg.set_index("timestamp").resample("M").sum(numeric_only=True).reset_index()
+    df_agg = df_agg.set_index("timestamp").resample("ME").sum(numeric_only=True).reset_index()
 else:
     df_agg = df.copy()
 
