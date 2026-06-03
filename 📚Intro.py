@@ -34,7 +34,7 @@ st.markdown(
 
 # ============================================================================================
 st.markdown(
-""" <div style="background-color: #d5fe8b; padding: 15px; border-radius: 10px; border: 1px solid #d5fe8b;">
+""" <div style="background-color: #fff98e; padding: 15px; border-radius: 10px; border: 1px solid #fff98e;">
 This dashboard delivers a comprehensive overview of <b>cross-chain transfer activity</b>
 across blockchains integrated through <b>Axelar’s interoperability infrastructure</b>.
 It enables <b>in-depth monitoring and analysis</b> of <b>token flows</b>, examining both <b>inbound</b> and <b>outbound transfers</b> across <b>supported chains</b> to provide
