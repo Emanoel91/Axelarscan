@@ -35,13 +35,10 @@ st.markdown(
 # ============================================================================================
 st.markdown(
 """ <div style="background-color: #d5fe8b; padding: 15px; border-radius: 10px; border: 1px solid #d5fe8b;">
-This dashboard delivers a comprehensive overview of <b>cross-chain transaction activity</b>
-across blockchain networks integrated through <b>Axelar’s interoperability infrastructure</b>.
-It enables <b>in-depth monitoring and analysis</b> of <b>asset flows</b>, examining both <b>inbound</b> and <b>outbound transfers</b> across <b>supported chains</b> to provide
-actionable insights into <b>cross-chain liquidity movements</b> and <b>ecosystem dynamics</b>. <br><br>
-With detailed visibility into <b>asset inflows</b> and <b>asset outflows</b> between different <b>blockchain ecosystems</b>, this dashboard serves as a unified platform for tracking,
-analyzing, and evaluating <b>cross-chain capital movements</b> and <b>network activity</b>
-across the Axelar ecosystem. </div>
+This dashboard delivers a comprehensive overview of <b>cross-chain transfer activity</b>
+across blockchains integrated through <b>Axelar’s interoperability infrastructure</b>.
+It enables <b>in-depth monitoring and analysis</b> of <b>token flows</b>, examining both <b>inbound</b> and <b>outbound transfers</b> across <b>supported chains</b> to provide
+actionable insights into <b>cross-chain liquidity movements</b> and <b>ecosystem dynamics</b>.
 """,
 unsafe_allow_html=True
 )
