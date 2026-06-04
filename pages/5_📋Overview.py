@@ -61,7 +61,7 @@ chains = [
     "flow","fraxtal","fxcore","haqq","hedera","hyperliquid","immutable","injective","ixo",
     "jackal","juno","kava","ki","kujira","lava","linea","mantle","mantra","migaloo","monad",
     "neutron","nolus","ojo","optimism","osmosis","persistence","plume","provenance","rebus",
-    "regen","saga","scroll","secret","secret-snip","sei","sommelier","stargaze","stellar",
+    "regen","saga","scroll","secret","secret-snip","sei","solana","sommelier","stargaze","stellar",
     "stride","sui","teritori","terra","terra-2","umee","xion","xpla","xrpl","xrpl-evm","zigchain"
 ]
 
